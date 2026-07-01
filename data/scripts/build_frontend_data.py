@@ -31,6 +31,65 @@ for s in schools:
     s["communities_xhzr"] = comm["新杭州人"]
     s["community_count"] = len(comm["户籍生"]) + len(comm["新杭州人"])
 
+# 从 direct_middle_school 字段提取缺失的初中学校
+existing_school_names = set(s["school_name"] for s in schools)
+middle_school_info = {}
+for s in schools:
+    if s.get("direct_middle_school"):
+        mid_name = s["direct_middle_school"].strip()
+        if mid_name and mid_name not in existing_school_names:
+            if mid_name not in middle_school_info:
+                middle_school_info[mid_name] = {
+                    "district": s.get("district", "西湖区"),
+                    "communities_hj": [],
+                    "communities_xhzr": [],
+                    "direct_primary_schools": [],
+                }
+            # 收集对口小区
+            hj_comms = s.get("communities_hj", [])
+            xhzr_comms = s.get("communities_xhzr", [])
+            for c in hj_comms:
+                if c not in middle_school_info[mid_name]["communities_hj"]:
+                    middle_school_info[mid_name]["communities_hj"].append(c)
+            for c in xhzr_comms:
+                if c not in middle_school_info[mid_name]["communities_xhzr"]:
+                    middle_school_info[mid_name]["communities_xhzr"].append(c)
+            # 收集对口小学
+            if s["school_name"] not in middle_school_info[mid_name]["direct_primary_schools"]:
+                middle_school_info[mid_name]["direct_primary_schools"].append(s["school_name"])
+
+# 添加缺失的初中学校到列表
+for idx, (mid_name, info) in enumerate(middle_school_info.items()):
+    new_school = {
+        "school_name": mid_name,
+        "campus_name": "",
+        "school_code": f"MISSING_{idx}",
+        "campus_code": f"MISSING_{idx}",
+        "district": info["district"],
+        "district_code": "",
+        "school_type": "初中",
+        "school_nature": "非民办",
+        "address": "",
+        "lng": "",
+        "lat": "",
+        "school_tel": "",
+        "student_count": 0,
+        "class_count": 0,
+        "teacher_count": 0,
+        "school_scope": "",
+        "direct_middle_school": "",
+        "direct_primary_schools": info["direct_primary_schools"],
+        "school_detail": "",
+        "year": "2026",
+        "visit_times": 0,
+        "communities_hj": info["communities_hj"],
+        "communities_xhzr": info["communities_xhzr"],
+        "community_count": len(info["communities_hj"]) + len(info["communities_xhzr"]),
+    }
+    schools.append(new_school)
+    if '十三中' in mid_name:
+        print(f"[DEBUG] Added: {mid_name}, primary_schools: {info['direct_primary_schools']}, communities: {len(info['communities_hj'])+len(info['communities_xhzr'])}")
+
 # 统计信息
 stats = {
     "total_schools": len(schools),

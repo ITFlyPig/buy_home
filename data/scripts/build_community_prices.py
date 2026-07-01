@@ -187,16 +187,24 @@ def load_communities():
     
     communities = {}
     for s in schools:
+        school_names = [s["school_name"]]
+        if s.get("direct_middle_school"):
+            school_names.append(s["direct_middle_school"].strip())
+        
         for c in s.get("communities_hj", []):
             if c not in communities:
                 communities[c] = {"schools": [], "districts": []}
-            communities[c]["schools"].append(s["school_name"])
+            for name in school_names:
+                if name not in communities[c]["schools"]:
+                    communities[c]["schools"].append(name)
             if s["district"] not in communities[c]["districts"]:
                 communities[c]["districts"].append(s["district"])
         for c in s.get("communities_xhzr", []):
             if c not in communities:
                 communities[c] = {"schools": [], "districts": []}
-            communities[c]["schools"].append(s["school_name"])
+            for name in school_names:
+                if name not in communities[c]["schools"]:
+                    communities[c]["schools"].append(name)
             if s["district"] not in communities[c]["districts"]:
                 communities[c]["districts"].append(s["district"])
     

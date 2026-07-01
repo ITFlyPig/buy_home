@@ -228,9 +228,23 @@
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">对口学校</span>
-          <select id="community-school-select" class="filter-select" onchange="applyCommunityFilters()" style="min-width: 180px;">
-            <option value="">全部学校</option>
+          <span class="filter-label">学段</span>
+          <select id="community-stage-select" class="filter-select" onchange="applyCommunityFilters()">
+            <option value="">全部学段</option>
+            <option value="小学">小学</option>
+            <option value="初中">初中</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">小学</span>
+          <select id="community-primary-select" class="filter-select" onchange="onCommunityPrimaryChange()" style="min-width: 180px;">
+            <option value="">全部小学</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">初中</span>
+          <select id="community-middle-select" class="filter-select" onchange="applyCommunityFilters()" style="min-width: 180px;">
+            <option value="">全部初中</option>
           </select>
         </div>
         <div class="filter-group">
@@ -439,20 +453,16 @@
             </select>
           </div>
           <div class="filter-group">
-            <span class="filter-label">对口学校</span>
-            <select id="market-school-select" class="filter-select" onchange="applyMarketFilters()" style="min-width: 180px;">
-              <option value="">全部学校</option>
+            <span class="filter-label">对口小学</span>
+            <select id="market-primary-school" class="filter-select" onchange="onMarketPrimarySchoolChange()" style="min-width: 180px;">
+              <option value="">全部小学</option>
             </select>
           </div>
           <div class="filter-group">
-            <span class="filter-label">对口小学</span>
-            <input type="text" id="market-primary-school" class="filter-input" list="primary-school-list" placeholder="选择小学" onchange="applyMarketFilters()" />
-            <datalist id="primary-school-list"></datalist>
-          </div>
-          <div class="filter-group">
             <span class="filter-label">对口中学</span>
-            <input type="text" id="market-middle-school" class="filter-input" list="middle-school-list" placeholder="选择中学" onchange="applyMarketFilters()" />
-            <datalist id="middle-school-list"></datalist>
+            <select id="market-middle-school" class="filter-select" onchange="applyMarketFilters()" style="min-width: 180px;">
+              <option value="">全部中学</option>
+            </select>
           </div>
           <div class="filter-group">
             <span class="filter-label">学校性质</span>
@@ -642,6 +652,20 @@ const schoolStatsData = window.schoolStats || {};
 const priceData = window.priceData || [];
 const priceStats = window.priceStats || {};
 const communityPrices = window.communityPrices || [];
+
+// 模糊匹配：去掉常见小区后缀后再做包含匹配
+function normalizeName(name) {
+  return name.replace(/(新村|小区|公寓|花园|大厦|社区|家园|花苑|新城|名苑|华庭|嘉园|广场|大楼|宿舍)$/g, '');
+}
+
+function fuzzyMatch(name, keyword) {
+  if (!keyword) return true;
+  if (name.includes(keyword)) return true;
+  const normName = normalizeName(name);
+  const normKeyword = normalizeName(keyword);
+  if (normKeyword.length >= 2 && normName.includes(normKeyword)) return true;
+  return false;
+}
 
 // 构建小区价格查找表
 const priceLookup = {};
@@ -942,13 +966,13 @@ function applyFilters() {
   const communitySearch = document.getElementById('community-search').value.trim();
 
   filteredSchools = allSchools.filter(s => {
-    if (schoolSearch && !s.school_name.includes(schoolSearch)) return false;
+    if (schoolSearch && !fuzzyMatch(s.school_name, schoolSearch)) return false;
     if (district && s.district !== district) return false;
     if (stage && s.school_type !== stage) return false;
     if (nature && s.school_nature !== nature) return false;
     if (communitySearch) {
       const allCommunities = [...(s.communities_hj || []), ...(s.communities_xhzr || [])];
-      if (!allCommunities.some(c => c.includes(communitySearch))) return false;
+      if (!allCommunities.some(c => fuzzyMatch(c, communitySearch))) return false;
     }
     return true;
   });
@@ -1016,6 +1040,7 @@ function renderSchools() {
           <div><span class="label">区域：</span><span class="val">${s.district}</span></div>
           ${s.address ? `<div><span class="label">地址：</span><span class="val">${s.address}</span></div>` : ''}
           ${s.direct_middle_school ? `<div><span class="label">对口初中：</span><span class="val">${s.direct_middle_school}</span></div>` : ''}
+          ${s.direct_primary_schools && s.direct_primary_schools.length > 0 ? `<div><span class="label">对口小学：</span><span class="val">${s.direct_primary_schools.join('、')}</span></div>` : ''}
           ${s.student_count > 0 ? `<div><span class="label">规模：</span><span class="val">${s.student_count}学生 / ${s.class_count}班 / ${s.teacher_count}教师</span></div>` : ''}
         </div>
         ${allComm.length > 0 ? `
@@ -1093,7 +1118,6 @@ function getCommunityMaxRate(community) {
 
 function loadMarketData() {
   marketLoaded = true;
-  // 初始化区域下拉
   const districtSelect = document.getElementById('market-district');
   const districts = [...new Set(communityPrices.flatMap(c => c.districts || []))].sort();
   districts.forEach(d => {
@@ -1102,95 +1126,127 @@ function loadMarketData() {
     districtSelect.appendChild(opt);
   });
 
-  // 初始化对口学校下拉（全部学校）
-  updateMarketSchoolOptions('');
-
-  // 初始化小学/中学可搜索下拉
-  const primaryList = document.getElementById('primary-school-list');
-  const middleList = document.getElementById('middle-school-list');
-  const primarySchools = [];
-  const middleSchools = [];
-  allSchools.forEach(s => {
-    if (s.school_type === '小学') primarySchools.push(s.school_name);
-    else if (s.school_type === '初中' || (s.school_type || '').includes('九年')) middleSchools.push(s.school_name);
-  });
-  [...new Set(primarySchools)].sort().forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    primaryList.appendChild(opt);
-  });
-  [...new Set(middleSchools)].sort().forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    middleList.appendChild(opt);
-  });
+  updateMarketPrimaryOptions('');
+  updateMarketMiddleOptions('');
 
   applyMarketFilters();
 }
 
-// 区域联动学校下拉框
-function updateMarketSchoolOptions(district) {
-  const schoolSelect = document.getElementById('market-school-select');
-  const prevValue = schoolSelect.value;
-  schoolSelect.innerHTML = '<option value="">全部学校</option>';
-  
-  const schoolList = allSchools
-    .filter(s => !district || s.district === district)
+function updateMarketPrimaryOptions(district) {
+  const primarySelect = document.getElementById('market-primary-school');
+  const prevValue = primarySelect.value;
+  primarySelect.innerHTML = '<option value="">全部小学</option>';
+
+  const primarySchools = allSchools
+    .filter(s => s.school_type === '小学' && (!district || s.district === district))
     .map(s => s.school_name);
-  const schoolSet = new Set(schoolList);
-  
+  const schoolSet = new Set(primarySchools);
+
   let hasPrev = false;
   [...schoolSet].sort().forEach(s => {
     const option = document.createElement('option');
     option.value = s;
     option.textContent = s;
     if (s === prevValue) hasPrev = true;
-    schoolSelect.appendChild(option);
+    primarySelect.appendChild(option);
   });
-  
-  if (prevValue && !hasPrev) schoolSelect.value = '';
-  else schoolSelect.value = prevValue;
+
+  if (prevValue && !hasPrev) {
+    primarySelect.value = '';
+  } else {
+    primarySelect.value = prevValue;
+  }
+}
+
+function updateMarketMiddleOptions(district, primarySchool) {
+  const middleSelect = document.getElementById('market-middle-school');
+  const prevValue = middleSelect.value;
+  middleSelect.innerHTML = '<option value="">全部中学</option>';
+
+  let middleSchools = allSchools
+    .filter(s => (s.school_type === '初中' || (s.school_type || '').includes('九年')) && (!district || s.district === district))
+    .map(s => s.school_name);
+
+  if (primarySchool) {
+    const mappedMiddle = primaryToMiddleMap[primarySchool];
+    if (mappedMiddle) {
+      const mappedSchool = allSchools.find(s => s.school_name === mappedMiddle);
+      if (!district || !mappedSchool || mappedSchool.district === district) {
+        middleSchools = [...new Set([...middleSchools, mappedMiddle])];
+      }
+    }
+  }
+
+  const schoolSet = new Set(middleSchools);
+
+  let hasPrev = false;
+  [...schoolSet].sort().forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    if (s === prevValue) hasPrev = true;
+    middleSelect.appendChild(option);
+  });
+
+  if (primarySchool) {
+    const mappedMiddle = primaryToMiddleMap[primarySchool];
+    if (mappedMiddle && middleSelect.querySelector(`option[value="${mappedMiddle}"]`)) {
+      middleSelect.value = mappedMiddle;
+    } else if (prevValue && !hasPrev) {
+      middleSelect.value = '';
+    } else {
+      middleSelect.value = prevValue;
+    }
+  } else if (prevValue && !hasPrev) {
+    middleSelect.value = '';
+  } else {
+    middleSelect.value = prevValue;
+  }
 }
 
 function onMarketDistrictChange() {
   const district = document.getElementById('market-district').value;
-  updateMarketSchoolOptions(district);
+  const primarySchool = document.getElementById('market-primary-school').value;
+  updateMarketPrimaryOptions(district);
+  updateMarketMiddleOptions(district, primarySchool);
+  applyMarketFilters();
+}
+
+function onMarketPrimarySchoolChange() {
+  const district = document.getElementById('market-district').value;
+  const primarySchool = document.getElementById('market-primary-school').value;
+  updateMarketMiddleOptions(district, primarySchool);
   applyMarketFilters();
 }
 
 function resetMarketFilters() {
   document.getElementById('market-community').value = '';
   document.getElementById('market-district').value = '';
-  document.getElementById('market-school-select').value = '';
   document.getElementById('market-primary-school').value = '';
   document.getElementById('market-middle-school').value = '';
   document.getElementById('market-school-nature').value = '';
   document.getElementById('market-exam-rate').value = '';
   document.getElementById('market-sort').value = 'price-desc';
-  updateMarketSchoolOptions('');
+  updateMarketPrimaryOptions('');
+  updateMarketMiddleOptions('');
   applyMarketFilters();
 }
 
 function applyMarketFilters() {
   const district = document.getElementById('market-district').value;
-  const schoolKw = document.getElementById('market-school-select').value;
   const commKw = document.getElementById('market-community').value.trim();
-  const primarySchool = document.getElementById('market-primary-school').value.trim();
-  const middleSchool = document.getElementById('market-middle-school').value.trim();
+  const primarySchool = document.getElementById('market-primary-school').value;
+  const middleSchool = document.getElementById('market-middle-school').value;
   const schoolNature = document.getElementById('market-school-nature').value;
   const rateFilter = document.getElementById('market-exam-rate').value;
   const sortKey = document.getElementById('market-sort').value;
 
-  // 中学桥接：该中学对口的小学列表
   const bridgedPrimaries = middleSchool ? (middleToPrimaryMap[middleSchool] || []) : [];
 
   let list = communityPrices.filter(c => {
     if (district && !(c.districts || []).includes(district)) return false;
-    if (commKw && !c.name.includes(commKw)) return false;
-    if (schoolKw && !(c.schools || []).some(s => s.includes(schoolKw))) return false;
-    // 小学精确筛选：schools 直接包含该小学
+    if (commKw && !fuzzyMatch(c.name, commKw)) return false;
     if (primarySchool && !(c.schools || []).includes(primarySchool)) return false;
-    // 中学筛选：schools 直接包含该中学，或包含该中学桥接的对口小学
     if (middleSchool) {
       const direct = (c.schools || []).includes(middleSchool);
       const bridged = bridgedPrimaries.length > 0 && (c.schools || []).some(s => bridgedPrimaries.includes(s));
@@ -1423,6 +1479,7 @@ function showSchoolDetail(idx) {
       ${s.school_tel ? `<div><strong>电话：</strong>${s.school_tel}</div>` : ''}
       ${s.student_count > 0 ? `<div><strong>规模：</strong>${s.student_count}学生 / ${s.class_count}班 / ${s.teacher_count}教师</div>` : ''}
       ${s.direct_middle_school ? `<div><strong>对口初中：</strong>${s.direct_middle_school}</div>` : ''}
+      ${s.direct_primary_schools && s.direct_primary_schools.length > 0 ? `<div><strong>对口小学：</strong>${s.direct_primary_schools.join('、')}</div>` : ''}
       ${s.school_scope ? `<div><strong>招生范围：</strong>${s.school_scope}</div>` : ''}
     </div>
     <div style="margin-top:16px;">
@@ -1453,23 +1510,22 @@ function loadCommunityData() {
     districtSelect.appendChild(option);
   });
   
-  // 初始化学校下拉框（全部学校）
-  updateCommunitySchoolOptions('');
+  // 初始化小学和初中下拉框
+  updateCommunityPrimaryOptions('');
+  updateCommunityMiddleOptions('');
   
   applyCommunityFilters();
 }
 
-// 区域联动学校下拉框：选区域后只显示该区域的学校（基于 allSchools.district）
-function updateCommunitySchoolOptions(district) {
-  const schoolSelect = document.getElementById('community-school-select');
-  const prevValue = schoolSelect.value;
-  schoolSelect.innerHTML = '<option value="">全部学校</option>';
+function updateCommunityPrimaryOptions(district) {
+  const primarySelect = document.getElementById('community-primary-select');
+  const prevValue = primarySelect.value;
+  primarySelect.innerHTML = '<option value="">全部小学</option>';
   
-  // 从 allSchools 按区域过滤，确保学校归属正确
-  const schoolList = allSchools
-    .filter(s => !district || s.district === district)
+  const primarySchools = allSchools
+    .filter(s => s.school_type === '小学' && (!district || s.district === district))
     .map(s => s.school_name);
-  const schoolSet = new Set(schoolList);
+  const schoolSet = new Set(primarySchools);
   
   let hasPrev = false;
   [...schoolSet].sort().forEach(s => {
@@ -1477,31 +1533,110 @@ function updateCommunitySchoolOptions(district) {
     option.value = s;
     option.textContent = s;
     if (s === prevValue) hasPrev = true;
-    schoolSelect.appendChild(option);
+    primarySelect.appendChild(option);
   });
   
-  // 若已选学校不在新区域范围内则清空
-  if (prevValue && !hasPrev) schoolSelect.value = '';
-  else schoolSelect.value = prevValue;
+  if (prevValue && !hasPrev) primarySelect.value = '';
+  else primarySelect.value = prevValue;
+}
+
+function updateCommunityMiddleOptions(district, primarySchool) {
+  const middleSelect = document.getElementById('community-middle-select');
+  const prevValue = middleSelect.value;
+  middleSelect.innerHTML = '<option value="">全部初中</option>';
+  
+  let middleSchools = [];
+  
+  if (primarySchool) {
+    const mappedMiddle = primaryToMiddleMap[primarySchool];
+    if (mappedMiddle) {
+      const mappedSchool = allSchools.find(s => s.school_name === mappedMiddle);
+      if (!district || !mappedSchool || mappedSchool.district === district) {
+        middleSchools = [mappedMiddle];
+      }
+    }
+  } else {
+    middleSchools = allSchools
+      .filter(s => s.school_type === '初中' && (!district || s.district === district))
+      .map(s => s.school_name);
+  }
+  
+  const schoolSet = new Set(middleSchools);
+  
+  [...schoolSet].sort().forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    middleSelect.appendChild(option);
+  });
+  
+  if (primarySchool) {
+    const mappedMiddle = primaryToMiddleMap[primarySchool];
+    if (mappedMiddle && middleSelect.querySelector(`option[value="${mappedMiddle}"]`)) {
+      middleSelect.value = mappedMiddle;
+    } else {
+      middleSelect.value = '';
+    }
+  } else {
+    middleSelect.value = prevValue && middleSelect.querySelector(`option[value="${prevValue}"]`) ? prevValue : '';
+  }
 }
 
 function onCommunityDistrictChange() {
   const district = document.getElementById('community-district-select').value;
-  updateCommunitySchoolOptions(district);
+  const primarySchool = document.getElementById('community-primary-select').value;
+  updateCommunityPrimaryOptions(district);
+  updateCommunityMiddleOptions(district, primarySchool);
+  applyCommunityFilters();
+}
+
+function onCommunityPrimaryChange() {
+  const district = document.getElementById('community-district-select').value;
+  const primarySchool = document.getElementById('community-primary-select').value;
+  updateCommunityMiddleOptions(district, primarySchool);
   applyCommunityFilters();
 }
 
 function applyCommunityFilters() {
   const search = document.getElementById('community-search-input').value.trim();
   const district = document.getElementById('community-district-select').value;
-  const school = document.getElementById('community-school-select').value;
+  const stage = document.getElementById('community-stage-select').value;
+  const primarySchool = document.getElementById('community-primary-select').value;
+  const middleSchool = document.getElementById('community-middle-select').value;
   const priceRange = document.getElementById('community-price-range').value;
   const priceSort = document.getElementById('community-price-sort').value;
   
+  const bridgedPrimaries = middleSchool ? (middleToPrimaryMap[middleSchool] || []) : [];
+  
   filteredCommunities = communityPrices.filter(p => {
-    if (search && !p.name.includes(search)) return false;
+    if (search && !fuzzyMatch(p.name, search)) return false;
     if (district && !(p.districts || []).includes(district)) return false;
-    if (school && !(p.schools || []).includes(school)) return false;
+    
+    if (stage) {
+      const schools = p.schools || [];
+      if (stage === '小学') {
+        const hasPrimary = schools.some(s => {
+          const school = allSchools.find(ss => ss.school_name === s);
+          return school && school.school_type === '小学';
+        });
+        if (!hasPrimary) return false;
+      } else if (stage === '初中') {
+        const hasMiddle = schools.some(s => {
+          const school = allSchools.find(ss => ss.school_name === s);
+          return school && school.school_type === '初中';
+        });
+        if (!hasMiddle) return false;
+      }
+    }
+    
+    if (primarySchool && !(p.schools || []).includes(primarySchool)) return false;
+    
+    if (middleSchool) {
+      const direct = (p.schools || []).includes(middleSchool);
+      const bridged = bridgedPrimaries.length > 0 && (p.schools || []).some(s => bridgedPrimaries.includes(s));
+      if (!direct && !bridged) return false;
+    }
+    
     if (priceRange) {
       const [min, max] = priceRange.split('-').map(Number);
       const priceWan = (p.avg_price || 0) / 10000;
@@ -1510,7 +1645,6 @@ function applyCommunityFilters() {
     return p.avg_price > 0;
   });
   
-  // 价格排序
   if (priceSort === 'desc') {
     filteredCommunities.sort((a, b) => b.avg_price - a.avg_price);
   } else if (priceSort === 'asc') {
@@ -1525,10 +1659,13 @@ function applyCommunityFilters() {
 function resetCommunityFilters() {
   document.getElementById('community-search-input').value = '';
   document.getElementById('community-district-select').value = '';
+  document.getElementById('community-stage-select').value = '';
+  document.getElementById('community-primary-select').value = '';
+  document.getElementById('community-middle-select').value = '';
   document.getElementById('community-price-range').value = '';
   document.getElementById('community-price-sort').value = '';
-  document.getElementById('community-school-select').value = '';
-  updateCommunitySchoolOptions('');
+  updateCommunityPrimaryOptions('');
+  updateCommunityMiddleOptions('');
   applyCommunityFilters();
 }
 
@@ -1655,7 +1792,7 @@ function applyPriceCompareFilters() {
   
   filteredPriceCompare = communityPrices.filter(p => {
     if (p.avg_price <= 0) return false;
-    if (search && !p.name.includes(search)) return false;
+    if (search && !fuzzyMatch(p.name, search)) return false;
     if (district && !(p.districts || []).includes(district)) return false;
     if (school && !(p.schools || []).includes(school)) return false;
     return true;
@@ -1749,7 +1886,7 @@ function renderExamData() {
   const sort = document.getElementById('exam-sort').value;
   
   let filtered = examData.filter(s => {
-    if (search && !s.name.includes(search)) return false;
+    if (search && !fuzzyMatch(s.name, search)) return false;
     if (district && s.district !== district) return false;
     if (nature && s.type !== nature) return false;
     return true;
