@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.trae/
+.idea/
+.vscode/
+
+# Node
+node_modules/

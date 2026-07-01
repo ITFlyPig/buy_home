@@ -1,0 +1,15 @@
+{
+  "crawl_time": "2026-06-27 16:22:00",
+  "year": "2026",
+  "total_schools": 0,
+  "total_district_mappings": 0,
+  "total_warnings": 0,
+  "total_graduates": 0,
+  "requests": 0,
+  "errors": 2,
+  "district_stats": {},
+  "error_samples": [
+    "[mgop.zjhcsoft.hzjysjrtpt.AppSchoolInfocustompaginatechild] HTTP错误: HTTP Error 502: Bad Gateway（重试3次仍失败）",
+    "[mgop.zjhcsoft.hzjysjrtpt.AppSchoolInfocustompaginatechild] HTTP错误: HTTP Error 502: Bad Gateway（重试3次仍失败）"
+  ]
+}

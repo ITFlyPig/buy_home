@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>杭州买房指南 - 数据可视化决策平台</title>
+  <script src="./data/school_data.js"></script>
+  <script src="./data/price_data.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; }
+
+    .app-header {
+      background: linear-gradient(135deg, #0A8754 0%, #066b43 100%);
+      color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .app-header h1 { font-size: 22px; font-weight: 600; }
+    .app-header .badge { font-size: 12px; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 10px; }
+
+    .tab-nav { background: #fff; display: flex; padding: 0 32px; border-bottom: 1px solid #e8e8e8; }
+    .tab-nav .tab-item {
+      padding: 14px 24px; font-size: 15px; color: #666; cursor: pointer;
+      border-bottom: 3px solid transparent; transition: all 0.2s; position: relative; bottom: -1px;
+    }
+    .tab-nav .tab-item:hover { color: #0A8754; }
+    .tab-nav .tab-item.active { color: #0A8754; border-bottom-color: #0A8754; font-weight: 600; }
+
+    .tab-content { padding: 20px 32px; max-width: 1400px; margin: 0 auto; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .stat-card .icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .stat-card .num { font-size: 28px; font-weight: 700; color: #333; }
+    .stat-card .label { font-size: 13px; color: #999; }
+
+    .filter-bar { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .filter-input { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; width: 200px; outline: none; transition: border-color 0.2s; }
+    .filter-input:focus { border-color: #0A8754; }
+    .filter-input::placeholder { color: #999; }
+    .filter-select { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; min-width: 120px; outline: none; cursor: pointer; transition: border-color 0.2s; }
+    .filter-select:focus { border-color: #0A8754; }
+    .filter-btn { padding: 8px 16px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; background: #fff; color: #666; cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { border-color: #0A8754; color: #0A8754; }
+    .filter-count { margin-left: auto; color: #999; font-size: 13px; }
+
+    .school-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+    .school-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .school-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .school-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .school-card .school-name { font-size: 16px; font-weight: 600; color: #333; line-height: 1.4; }
+    .school-card .card-tags { display: flex; gap: 6px; flex-shrink: 0; }
+    .school-card .card-info { font-size: 13px; color: #666; line-height: 1.8; }
+    .school-card .card-info .label { color: #999; }
+    .school-card .card-info .val { color: #333; }
+    .school-card .communities { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; }
+    .school-card .communities .title { font-size: 12px; color: #999; margin-bottom: 6px; }
+    .school-card .comm-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .school-card .comm-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f9eb; color: #0A8754; }
+    .school-card .comm-more { font-size: 12px; color: #999; padding: 2px 6px; }
+
+    .tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+    .tag-success { background: #f0f9eb; color: #0A8754; }
+    .tag-warning { background: #fdf6ec; color: #d89614; }
+    .tag-info { background: #f0f5ff; color: #1e88e5; }
+
+    .empty-state { text-align: center; padding: 80px 20px; color: #999; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+
+    .pagination-wrap { display: flex; justify-content: center; margin-top: 24px; }
+    .pagination { display: flex; align-items: center; gap: 16px; }
+    .page-btn { padding: 6px 16px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 14px; background: #fff; cursor: pointer; transition: all 0.2s; }
+    .page-btn:hover:not(:disabled) { border-color: #0A8754; color: #0A8754; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-info { font-size: 14px; color: #666; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+    .data-table th, .data-table td { padding: 8px 12px; border: 1px solid #e8e8e8; text-align: left; }
+    .data-table th { background: #fafafa; font-weight: 600; color: #333; }
+    .data-table tr:hover td { background: #f5f7fa; }
+
+    .policy-section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .policy-section h3 { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
+    .policy-section h3 .icon { font-size: 20px; }
+    .policy-subsection { margin-bottom: 16px; }
+    .policy-subsection h4 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; }
+    .policy-list { list-style: none; padding: 0; }
+    .policy-list li { font-size: 14px; color: #666; line-height: 2; padding-left: 16px; position: relative; }
+    .policy-list li::before { content: '·'; position: absolute; left: 0; color: #0A8754; font-weight: bold; }
+
+    .price-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .price-stat { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .price-stat .label { font-size: 12px; color: #999; margin-bottom: 4px; }
+    .price-stat .value { font-size: 24px; font-weight: 700; color: #333; }
+    .price-stat .value.red { color: #c62828; }
+    .price-stat .value.green { color: #0A8754; }
+
+    .budget-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .budget-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .budget-card .budget-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
+    .budget-card .budget-areas { font-size: 13px; color: #0A8754; margin-bottom: 8px; }
+    .budget-card .budget-desc { font-size: 13px; color: #666; line-height: 1.6; }
+
+    .plate-section { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .plate-section-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .plate-group { margin-bottom: 20px; }
+    .plate-group:last-child { margin-bottom: 0; }
+    .plate-group-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="app-header">
+    <h1>杭州买房指南</h1>
+    <span class="badge">数据可视化决策平台</span>
+  </header>
+
+  <nav class="tab-nav">
+    <div class="tab-item active" onclick="switchTab('school')">学区学校</div>
+    <div class="tab-item" onclick="switchTab('price')">房价行情</div>
+    <div class="tab-item" onclick="switchTab('plate')">板块分析</div>
+    <div class="tab-item" onclick="switchTab('policy')">购房政策</div>
+  </nav>
+
+  <div class="tab-content">
+    <!-- 学区学校 -->
+    <div id="tab-school">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="icon" style="background: #e8f5e9; color: #0A8754;">🏫</div>
+          <div><div class="num" id="stat-total-schools">0</div><div class="label">学校总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #e3f2fd; color: #1565c0;">🏘️</div>
+          <div><div class="num" id="stat-total-mappings">0</div><div class="label">对口小区映射</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #fff3e0; color: #e65100;">📍</div>
+          <div><div class="num" id="stat-district-count">0</div><div class="label">覆盖区域</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #fce4ec; color: #c62828;">📅</div>
+          <div><div class="num">2026</div><div class="label">招生年份</div></div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="school-search" placeholder="搜索学校名称..." class="filter-input" oninput="applyFilters()" />
+        <select id="district-select" class="filter-select" onchange="applyFilters()">
+          <option value="">区域</option>
+        </select>
+        <select id="stage-select" class="filter-select" onchange="applyFilters()">
+          <option value="">学段（小学/初中）</option>
+          <option value="小学">小学</option>
+          <option value="初中">初中</option>
+        </select>
+        <select id="nature-select" class="filter-select" onchange="applyFilters()">
+          <option value="">办学性质</option>
+        </select>
+        <input type="text" id="community-search" placeholder="搜索对口小区..." class="filter-input" oninput="applyFilters()" />
+        <button onclick="resetFilters()" class="filter-btn">重置筛选</button>
+        <span class="filter-count" id="result-count">共 0 所学校</span>
+      </div>
+
+      <div id="school-list" class="school-grid"></div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div class="icon">🔍</div>
+        <p>没有匹配的学校</p>
+      </div>
+
+      <div id="pagination" class="pagination-wrap" style="display:none;">
+        <div class="pagination">
+          <button onclick="prevPage()" id="prev-btn" class="page-btn" disabled>上一页</button>
+          <span class="page-info" id="page-info">第 1 页 / 共 1 页</span>
+          <button onclick="nextPage()" id="next-btn" class="page-btn" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 房价行情 -->
+    <div id="tab-price" style="display:none;">
+      <div class="price-stats">
+        <div class="price-stat">
+          <div class="label">最新均价</div>
+          <div class="value" id="price-latest">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">环比涨跌</div>
+          <div class="value" id="price-mom">0%</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">历史最高</div>
+          <div class="value" id="price-max">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">历史最低</div>
+          <div class="value" id="price-min">0</div>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">📈</span> 月度房价走势</h3>
+        <table class="data-table">
+          <thead><tr><th>日期</th><th>均价(元/㎡)</th><th>环比涨跌</th></tr></thead>
+          <tbody id="price-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 板块分析 -->
+    <div id="tab-plate" style="display:none;">
+      <div class="policy-section">
+        <h3><span class="icon">💰</span> 预算分段推荐</h3>
+        <div class="budget-row" id="budget-recommendations"></div>
+      </div>
+
+      <div class="plate-section">
+        <div class="plate-section-title">主城区板块</div>
+        <div id="plate-main"></div>
+      </div>
+
+      <div class="plate-section">
+        <div class="plate-section-title">近郊区板块</div>
+        <div id="plate-suburb"></div>
+      </div>
+    </div>
+
+    <!-- 购房政策 -->
+    <div id="tab-policy" style="display:none;">
+      <div class="policy-section">
+        <h3><span class="icon">🏠</span> 一、限购政策</h3>
+        <div class="policy-subsection">
+          <h4>区域限购情况</h4>
+          <table class="data-table">
+            <thead><tr><th>区域</th><th>限购情况</th><th>说明</th></tr></thead>
+            <tbody id="policy-purchase-limit"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>购房条件</h4>
+          <ul class="policy-list" id="policy-purchase-conditions"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>购房套数限制</h4>
+          <ul class="policy-list" id="policy-purchase-count"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">💰</span> 二、贷款政策</h3>
+        <div class="policy-subsection">
+          <h4>首付比例</h4>
+          <table class="data-table">
+            <thead><tr><th>情况</th><th>首付比例</th></tr></thead>
+            <tbody id="policy-down-payment"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>贷款利率（参考）</h4>
+          <table class="data-table">
+            <thead><tr><th>类型</th><th>利率</th><th>说明</th></tr></thead>
+            <tbody id="policy-loan-rate"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>公积金贷款额度</h4>
+          <table class="data-table">
+            <thead><tr><th>条件</th><th>最高额度</th></tr></thead>
+            <tbody id="policy-fund-limit"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">📋</span> 三、税费参考</h3>
+        <div class="policy-subsection">
+          <h4>契税</h4>
+          <table class="data-table">
+            <thead><tr><th>情况</th><th>税率</th></tr></thead>
+            <tbody id="policy-deed-tax"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>其他费用</h4>
+          <ul class="policy-list" id="policy-other-fees"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">📄</span> 四、落户政策</h3>
+        <div class="policy-subsection">
+          <h4>人才落户</h4>
+          <ul class="policy-list" id="policy-talents"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>积分落户</h4>
+          <ul class="policy-list" id="policy-points"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>投靠落户</h4>
+          <ul class="policy-list" id="policy-family"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">💡</span> 五、购房建议</h3>
+        <div class="policy-subsection" id="policy-advice"></div>
+      </div>
+
+      <div style="text-align:center; color:#999; font-size:13px; padding:16px 0;">
+        📅 最后更新：2025年 ｜ 📌 建议关注：杭州住保房管局官网、杭州公积金中心官网
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 全局数据
+const allSchools = window.schools || [];
+const schoolStatsData = window.schoolStats || {};
+const priceData = window.priceData || [];
+const priceStats = window.priceStats || {};
+
+// 分页变量
+let currentPage = 1;
+const pageSize = 24;
+let filteredSchools = [];
+
+// 板块分析数据
+const plateDataMain = [
+  { district: '上城区', plates: [
+    { name: '钱江新城', price: '70000-100000', feature: '城市新中心，配套完善，江景资源丰富', target: '改善/高端' },
+    { name: '湖滨/武林', price: '60000-80000', feature: '传统市中心，商业发达，交通便利', target: '改善' },
+    { name: '城东新城', price: '45000-60000', feature: '交通枢纽，规划利好，性价比高', target: '刚需/改善' },
+    { name: '九堡', price: '35000-45000', feature: '地铁便利，配套成熟，价格亲民', target: '刚需' },
+  ]},
+  { district: '西湖区', plates: [
+    { name: '文教区', price: '60000-80000', feature: '学区优质，人文氛围浓厚，配套成熟', target: '改善' },
+    { name: '申花', price: '55000-70000', feature: '新兴高端板块，商业配套完善', target: '改善' },
+    { name: '之江', price: '35000-50000', feature: '环境优美，价格适中，适合宜居', target: '刚需/改善' },
+    { name: '留下/小和山', price: '28000-35000', feature: '价格低洼，环境好，通勤略远', target: '刚需' },
+  ]},
+  { district: '拱墅区', plates: [
+    { name: '桥西', price: '50000-65000', feature: '运河景观，历史文化，配套完善', target: '改善' },
+    { name: '申花', price: '55000-70000', feature: '高端居住区，商业发达', target: '改善' },
+    { name: '东新/三塘', price: '35000-45000', feature: '性价比高，配套成熟', target: '刚需/改善' },
+    { name: '祥符', price: '40000-50000', feature: '新兴板块，规划利好', target: '刚需/改善' },
+  ]},
+  { district: '滨江区', plates: [
+    { name: '滨江区政府', price: '55000-70000', feature: '高新区核心，产业发达，配套完善', target: '改善' },
+    { name: '彩虹城', price: '45000-55000', feature: '江景资源，教育优质', target: '改善' },
+    { name: '浦沿', price: '35000-45000', feature: '价格适中，配套逐步完善', target: '刚需/改善' },
+  ]},
+];
+
+const plateDataSuburb = [
+  { district: '余杭区', plates: [
+    { name: '未来科技城', price: '40000-55000', feature: '科创中心，规划一流，发展潜力大', target: '刚需/改善' },
+    { name: '良渚', price: '30000-40000', feature: '文化遗址，环境优美，价格亲民', target: '刚需/改善' },
+    { name: '闲林', price: '25000-30000', feature: '价格低洼，环境好', target: '刚需' },
+  ]},
+  { district: '萧山区', plates: [
+    { name: '奥体', price: '45000-60000', feature: '亚运会核心，配套完善', target: '改善' },
+    { name: '市北', price: '35000-45000', feature: '性价比高，配套成熟', target: '刚需/改善' },
+    { name: '南部卧城', price: '25000-35000', feature: '价格低洼，适合刚需', target: '刚需' },
+  ]},
+  { district: '临平区', plates: [
+    { name: '临平新城', price: '28000-35000', feature: '配套完善，价格适中', target: '刚需/改善' },
+    { name: '星桥', price: '22000-28000', feature: '价格低洼，地铁便利', target: '刚需' },
+  ]},
+  { district: '钱塘区', plates: [
+    { name: '下沙', price: '28000-35000', feature: '大学城，配套完善', target: '刚需/改善' },
+    { name: '大江东', price: '20000-28000', feature: '价格低洼，规划利好', target: '刚需' },
+  ]},
+];
+
+const budgetRecommendations = [
+  { budget: '200万以下', areas: '临安、桐庐、建德等远郊', desc: '适合预算有限的刚需，选择远郊小户型或二手房' },
+  { budget: '200-300万', areas: '临平、钱塘、萧山南部、余杭闲林', desc: '刚需主力选择，可购买80-100㎡小三房' },
+  { budget: '300-500万', areas: '城东新城、九堡、之江、未来科技城、萧山奥体周边', desc: '改善入门，可购买100-120㎡大三房' },
+  { budget: '500-800万', areas: '申花、桥西、滨江、钱江新城二期', desc: '高端改善，可购买120-150㎡四房' },
+  { budget: '800万以上', areas: '钱江新城核心、西湖景区周边、滨江核心', desc: '豪宅或江景大平层' },
+];
+
+const policyData = {
+  purchaseLimit: [
+    { area: '上城/拱墅/西湖/滨江', status: '有限购', desc: '本地户籍不限，外地需社保/个税' },
+    { area: '余杭/萧山/临平/钱塘/富阳', status: '不限购', desc: '无户籍社保要求' },
+  ],
+  purchaseConditions: [
+    '主城四区（上城/拱墅/西湖/滨江）：外地户籍需1年连续社保或个税',
+    '其他区域：无限制，可直接购买',
+  ],
+  purchaseCount: [
+    '本地户籍：主城区限2套，其他不限',
+    '外地户籍：主城区限1套',
+  ],
+  downPayment: [
+    { case: '首套（无房贷记录）', rate: '30%' },
+    { case: '二套（有房贷记录未结清）', rate: '60%' },
+    { case: '二套（有房贷记录已结清）', rate: '40%' },
+  ],
+  loanRate: [
+    { type: '商业贷款', rate: 'LPR+60BP', desc: '首套利率约4.2%，二套约4.9%' },
+    { type: '公积金贷款', rate: '3.1%', desc: '首套个人最高50万，夫妻最高100万' },
+  ],
+  fundLimit: [
+    { case: '单人缴存', amount: '最高50万' },
+    { case: '夫妻双方缴存', amount: '最高100万' },
+    { case: '高层次人才', amount: '最高150万' },
+  ],
+  deedTax: [
+    { case: '首套90㎡以下', rate: '1%' },
+    { case: '首套90㎡以上', rate: '1.5%' },
+    { case: '二套', rate: '2%' },
+    { case: '三套及以上', rate: '3%' },
+  ],
+  otherFees: [
+    '增值税及附加：满2年免征，不满2年按5.3%征收',
+    '个人所得税：满5年唯一免征，否则按差额20%或全额1%征收',
+    '中介费：约1-2%',
+    '评估费、公证费等：约0.5%',
+  ],
+  talents: [
+    '全日制本科及以上学历，在杭工作并缴纳社保',
+    '45周岁以下可直接落户',
+    '高层次人才享受购房补贴',
+  ],
+  points: [
+    '累计积分达到100分以上',
+    '在杭连续缴纳社保3年以上',
+    '拥有合法稳定住所',
+  ],
+  family: [
+    '夫妻投靠：结婚满2年，一方有杭州户籍',
+    '老年投靠：男年满60周岁，女年满55周岁，子女在杭有合法住所',
+    '未成年子女投靠：父母一方有杭州户籍',
+  ],
+  advice: [
+    { title: '刚需购房策略', steps: [
+      '优先考虑地铁沿线，通勤便利',
+      '关注学区资源，为子女教育考虑',
+      '总价控制在家庭年收入的5-8倍',
+      '关注共有产权房等保障性住房',
+    ]},
+    { title: '改善置换策略', steps: [
+      '先卖后买，释放首套资格',
+      '关注「卖旧买新」补贴政策',
+      '二手房挂牌周期较长，提前规划',
+    ]},
+  ],
+};
+
+// 初始化
+function init() {
+  // 初始化统计数据
+  document.getElementById('stat-total-schools').textContent = schoolStatsData.total_schools || allSchools.length;
+  document.getElementById('stat-total-mappings').textContent = schoolStatsData.total_mappings || 0;
+  document.getElementById('stat-district-count').textContent = schoolStatsData.district_stats ? Object.keys(schoolStatsData.district_stats).length : 0;
+
+  // 初始化区域下拉框
+  const districts = [...new Set(allSchools.map(s => s.district))].sort();
+  const districtSelect = document.getElementById('district-select');
+  districts.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    districtSelect.appendChild(option);
+  });
+
+  // 初始化办学性质下拉框
+  const natures = [...new Set(allSchools.map(s => s.school_nature).filter(Boolean))];
+  const natureSelect = document.getElementById('nature-select');
+  natures.forEach(n => {
+    const option = document.createElement('option');
+    option.value = n;
+    option.textContent = n === '非民办' ? '公办' : n;
+    natureSelect.appendChild(option);
+  });
+
+  // 加载房价数据
+  loadPriceData();
+
+  // 加载板块分析
+  loadPlateData();
+
+  // 加载政策数据
+  loadPolicyData();
+
+  // 初始渲染学校列表
+  applyFilters();
+}
+
+// 切换Tab
+function switchTab(tab) {
+  document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
+  document.querySelector(`.tab-item[onclick="switchTab('${tab}')"]`).classList.add('active');
+  
+  document.getElementById('tab-school').style.display = 'none';
+  document.getElementById('tab-price').style.display = 'none';
+  document.getElementById('tab-plate').style.display = 'none';
+  document.getElementById('tab-policy').style.display = 'none';
+  
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+}
+
+// 应用筛选
+function applyFilters() {
+  const schoolSearch = document.getElementById('school-search').value.trim();
+  const district = document.getElementById('district-select').value;
+  const stage = document.getElementById('stage-select').value;
+  const nature = document.getElementById('nature-select').value;
+  const communitySearch = document.getElementById('community-search').value.trim();
+
+  filteredSchools = allSchools.filter(s => {
+    if (schoolSearch && !s.school_name.includes(schoolSearch)) return false;
+    if (district && s.district !== district) return false;
+    if (stage && s.school_type !== stage) return false;
+    if (nature && s.school_nature !== nature) return false;
+    if (communitySearch) {
+      const allCommunities = [...(s.communities_hj || []), ...(s.communities_xhzr || [])];
+      if (!allCommunities.some(c => c.includes(communitySearch))) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('result-count').textContent = `共 ${filteredSchools.length} 所学校`;
+  currentPage = 1;
+  renderSchools();
+}
+
+// 重置筛选
+function resetFilters() {
+  document.getElementById('school-search').value = '';
+  document.getElementById('district-select').value = '';
+  document.getElementById('stage-select').value = '';
+  document.getElementById('nature-select').value = '';
+  document.getElementById('community-search').value = '';
+  applyFilters();
+}
+
+// 渲染学校列表
+function renderSchools() {
+  const totalPages = Math.ceil(filteredSchools.length / pageSize);
+  const start = (currentPage - 1) * pageSize;
+  const pagedSchools = filteredSchools.slice(start, start + pageSize);
+
+  const list = document.getElementById('school-list');
+  const empty = document.getElementById('empty-state');
+  const pagination = document.getElementById('pagination');
+
+  if (filteredSchools.length === 0) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    pagination.style.display = 'none';
+    return;
+  }
+
+  list.style.display = 'grid';
+  empty.style.display = 'none';
+
+  list.innerHTML = pagedSchools.map(s => {
+    const typeClass = s.school_type === '小学' ? 'tag-success' : s.school_type === '初中' ? 'tag-warning' : 'tag-info';
+    const natureLabel = s.school_nature === '非民办' ? '公办' : s.school_nature;
+    const hjComm = s.communities_hj || [];
+    const xhzrComm = s.communities_xhzr || [];
+    const allComm = [...hjComm, ...xhzrComm];
+    const commDisplay = allComm.slice(0, 8).map(c => `<span class="comm-tag">${c}</span>`).join('');
+    const moreComm = allComm.length > 8 ? `<span class="comm-more">+${allComm.length - 8}</span>` : '';
+    
+    return `
+      <div class="school-card">
+        <div class="card-top">
+          <div class="school-name">${s.school_name}</div>
+          <div class="card-tags">
+            <span class="tag ${typeClass}">${s.school_type}</span>
+            <span class="tag tag-info">${natureLabel}</span>
+          </div>
+        </div>
+        <div class="card-info">
+          <div><span class="label">区域：</span><span class="val">${s.district}</span></div>
+          ${s.address ? `<div><span class="label">地址：</span><span class="val">${s.address}</span></div>` : ''}
+          ${s.direct_middle_school ? `<div><span class="label">对口初中：</span><span class="val">${s.direct_middle_school}</span></div>` : ''}
+          ${s.student_count > 0 ? `<div><span class="label">规模：</span><span class="val">${s.student_count}学生 / ${s.class_count}班 / ${s.teacher_count}教师</span></div>` : ''}
+        </div>
+        ${allComm.length > 0 ? `
+          <div class="communities">
+            <div class="title">对口小区（${allComm.length}个）</div>
+            <div class="comm-list">${commDisplay}${moreComm}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // 分页
+  document.getElementById('page-info').textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+  document.getElementById('prev-btn').disabled = currentPage <= 1;
+  document.getElementById('next-btn').disabled = currentPage >= totalPages;
+  pagination.style.display = filteredSchools.length > pageSize ? 'flex' : 'none';
+}
+
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderSchools();
+  }
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(filteredSchools.length / pageSize);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderSchools();
+  }
+}
+
+// 加载房价数据
+function loadPriceData() {
+  document.getElementById('price-latest').textContent = (priceStats.latest_price || 0).toLocaleString() + '元/㎡';
+  
+  const mom = priceStats.latest_mom || 0;
+  const momEl = document.getElementById('price-mom');
+  momEl.textContent = (mom >= 0 ? '+' : '') + mom + '%';
+  momEl.className = 'value ' + (mom >= 0 ? 'red' : 'green');
+  
+  document.getElementById('price-max').textContent = (priceStats.max_price || 0).toLocaleString() + '元/㎡';
+  document.getElementById('price-min').textContent = (priceStats.min_price || 0).toLocaleString() + '元/㎡';
+
+  const recent = priceData.slice(-12).reverse();
+  const tbody = document.getElementById('price-table-body');
+  tbody.innerHTML = recent.map(item => {
+    const momClass = item.mom_pct >= 0 ? 'red' : 'green';
+    return `<tr><td>${item.year}年${item.month}月</td><td>${item.price.toLocaleString()}</td><td class="${momClass}">${item.mom_pct >= 0 ? '+' : ''}${item.mom_pct}%</td></tr>`;
+  }).join('');
+}
+
+// 加载板块分析
+function loadPlateData() {
+  const budgetDiv = document.getElementById('budget-recommendations');
+  budgetDiv.innerHTML = budgetRecommendations.map(b => `
+    <div class="budget-card">
+      <div class="budget-title">💰 ${b.budget}</div>
+      <div class="budget-areas">${b.areas}</div>
+      <div class="budget-desc">${b.desc}</div>
+    </div>
+  `).join('');
+
+  const mainDiv = document.getElementById('plate-main');
+  mainDiv.innerHTML = plateDataMain.map(group => `
+    <div class="plate-group">
+      <div class="plate-group-title">${group.district}</div>
+      <table class="data-table">
+        <thead><tr><th>板块</th><th>均价参考</th><th>特点</th><th>适合人群</th></tr></thead>
+        <tbody>${group.plates.map(p => `<tr><td>${p.name}</td><td>${p.price}</td><td>${p.feature}</td><td>${p.target}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `).join('');
+
+  const suburbDiv = document.getElementById('plate-suburb');
+  suburbDiv.innerHTML = plateDataSuburb.map(group => `
+    <div class="plate-group">
+      <div class="plate-group-title">${group.district}</div>
+      <table class="data-table">
+        <thead><tr><th>板块</th><th>均价参考</th><th>特点</th><th>适合人群</th></tr></thead>
+        <tbody>${group.plates.map(p => `<tr><td>${p.name}</td><td>${p.price}</td><td>${p.feature}</td><td>${p.target}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `).join('');
+}
+
+// 加载政策数据
+function loadPolicyData() {
+  document.getElementById('policy-purchase-limit').innerHTML = policyData.purchaseLimit.map(item => 
+    `<tr><td>${item.area}</td><td>${item.status}</td><td>${item.desc}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-purchase-conditions').innerHTML = policyData.purchaseConditions.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-purchase-count').innerHTML = policyData.purchaseCount.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-down-payment').innerHTML = policyData.downPayment.map(item => 
+    `<tr><td>${item.case}</td><td>${item.rate}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-loan-rate').innerHTML = policyData.loanRate.map(item => 
+    `<tr><td>${item.type}</td><td>${item.rate}</td><td>${item.desc}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-fund-limit').innerHTML = policyData.fundLimit.map(item => 
+    `<tr><td>${item.case}</td><td>${item.amount}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-deed-tax').innerHTML = policyData.deedTax.map(item => 
+    `<tr><td>${item.case}</td><td>${item.rate}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-other-fees').innerHTML = policyData.otherFees.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-talents').innerHTML = policyData.talents.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-points').innerHTML = policyData.points.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-family').innerHTML = policyData.family.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-advice').innerHTML = policyData.advice.map(item => `
+    <div class="policy-subsection">
+      <h4>${item.title}</h4>
+      <ul class="policy-list">
+        ${item.steps.map(step => `<li>${step}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+// 页面加载完成后初始化
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

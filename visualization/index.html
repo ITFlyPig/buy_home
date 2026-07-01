@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>杭州买房指南 - 数据可视化决策平台</title>
+  <script src="./data/school_data.js"></script>
+  <script src="./data/price_data.js"></script>
+  <script src="./data/community_prices.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; }
+
+    .app-header {
+      background: linear-gradient(135deg, #0A8754 0%, #066b43 100%);
+      color: #fff; padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .app-header h1 { font-size: 22px; font-weight: 600; }
+    .app-header .badge { font-size: 12px; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 10px; }
+
+    .tab-nav { background: #fff; display: flex; padding: 0 32px; border-bottom: 1px solid #e8e8e8; }
+    .tab-nav .tab-item {
+      padding: 14px 24px; font-size: 15px; color: #666; cursor: pointer;
+      border-bottom: 3px solid transparent; transition: all 0.2s; position: relative; bottom: -1px;
+    }
+    .tab-nav .tab-item:hover { color: #0A8754; }
+    .tab-nav .tab-item.active { color: #0A8754; border-bottom-color: #0A8754; font-weight: 600; }
+
+    .tab-content { padding: 20px 32px; max-width: 1400px; margin: 0 auto; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .stat-card .icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .stat-card .num { font-size: 28px; font-weight: 700; color: #333; }
+    .stat-card .label { font-size: 13px; color: #999; }
+
+    .filter-bar { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .filter-input { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; width: 200px; outline: none; transition: border-color 0.2s; }
+    .filter-input:focus { border-color: #0A8754; }
+    .filter-input::placeholder { color: #999; }
+    .filter-select { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; min-width: 120px; outline: none; cursor: pointer; transition: border-color 0.2s; }
+    .filter-select:focus { border-color: #0A8754; }
+    .filter-btn { padding: 8px 16px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; background: #fff; color: #666; cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { border-color: #0A8754; color: #0A8754; }
+    .filter-count { margin-left: auto; color: #999; font-size: 13px; }
+
+    .school-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+    .school-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .school-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+    .school-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .school-card .school-name { font-size: 16px; font-weight: 600; color: #333; line-height: 1.4; }
+    .school-card .card-tags { display: flex; gap: 6px; flex-shrink: 0; }
+    .school-card .card-info { font-size: 13px; color: #666; line-height: 1.8; }
+    .school-card .card-info .label { color: #999; }
+    .school-card .card-info .val { color: #333; }
+    .school-card .communities { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; }
+    .school-card .communities .title { font-size: 12px; color: #999; margin-bottom: 6px; }
+    .school-card .comm-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .school-card .comm-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f9eb; color: #0A8754; }
+    .school-card .comm-more { font-size: 12px; color: #999; padding: 2px 6px; }
+
+    .tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+    .tag-success { background: #f0f9eb; color: #0A8754; }
+    .tag-warning { background: #fdf6ec; color: #d89614; }
+    .tag-info { background: #f0f5ff; color: #1e88e5; }
+
+    .empty-state { text-align: center; padding: 80px 20px; color: #999; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+
+    .pagination-wrap { display: flex; justify-content: center; margin-top: 24px; }
+    .pagination { display: flex; align-items: center; gap: 16px; }
+    .page-btn { padding: 6px 16px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 14px; background: #fff; cursor: pointer; transition: all 0.2s; }
+    .page-btn:hover:not(:disabled) { border-color: #0A8754; color: #0A8754; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-info { font-size: 14px; color: #666; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+    .data-table th, .data-table td { padding: 8px 12px; border: 1px solid #e8e8e8; text-align: left; white-space: nowrap; }
+    .data-table th { background: #fafafa; font-weight: 600; color: #333; position: sticky; top: 0; z-index: 1; }
+    .data-table tbody tr:nth-child(even) { background: #fafcff; }
+    .data-table tr:hover td { background: #f5f7fa; }
+
+    .policy-section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .policy-section h3 { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
+    .policy-section h3 .icon { font-size: 20px; }
+    .policy-subsection { margin-bottom: 16px; }
+    .policy-subsection h4 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; }
+    .policy-list { list-style: none; padding: 0; }
+    .policy-list li { font-size: 14px; color: #666; line-height: 2; padding-left: 16px; position: relative; }
+    .policy-list li::before { content: '·'; position: absolute; left: 0; color: #0A8754; font-weight: bold; }
+
+    .price-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .price-stat { background: #fff; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .price-stat .label { font-size: 12px; color: #999; margin-bottom: 4px; }
+    .price-stat .value { font-size: 24px; font-weight: 700; color: #333; }
+    .price-stat .value.red { color: #c62828; }
+    .price-stat .value.green { color: #0A8754; }
+
+    .budget-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .budget-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .budget-card .budget-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
+    .budget-card .budget-areas { font-size: 13px; color: #0A8754; margin-bottom: 8px; }
+    .budget-card .budget-desc { font-size: 13px; color: #666; line-height: 1.6; }
+
+    .plate-section { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .plate-section-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .plate-group { margin-bottom: 20px; }
+    .plate-group:last-child { margin-bottom: 0; }
+    .plate-group-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="app-header">
+    <h1>杭州买房指南</h1>
+    <span class="badge">数据可视化决策平台</span>
+  </header>
+
+  <nav class="tab-nav">
+    <div class="tab-item active" onclick="switchTab('school')">学区学校</div>
+    <div class="tab-item" onclick="switchTab('community')">学区小区</div>
+    <div class="tab-item" onclick="switchTab('price')">房价对比</div>
+    <div class="tab-item" onclick="switchTab('exam')">中考成绩</div>
+    <div class="tab-item" onclick="switchTab('market')">房价行情</div>
+    <div class="tab-item" onclick="switchTab('plate')">板块分析</div>
+    <div class="tab-item" onclick="switchTab('policy')">购房政策</div>
+  </nav>
+
+  <div class="tab-content">
+    <!-- 学区学校 -->
+    <div id="tab-school">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="icon" style="background: #e8f5e9; color: #0A8754;">🏫</div>
+          <div><div class="num" id="stat-total-schools">0</div><div class="label">学校总数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #e3f2fd; color: #1565c0;">🏘️</div>
+          <div><div class="num" id="stat-total-mappings">0</div><div class="label">对口小区映射</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #fff3e0; color: #e65100;">📍</div>
+          <div><div class="num" id="stat-district-count">0</div><div class="label">覆盖区域</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #fce4ec; color: #c62828;">📅</div>
+          <div><div class="num">2026</div><div class="label">招生年份</div></div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="school-search" placeholder="搜索学校名称..." class="filter-input" oninput="applyFilters()" />
+        <select id="district-select" class="filter-select" onchange="applyFilters()">
+          <option value="">区域</option>
+        </select>
+        <select id="stage-select" class="filter-select" onchange="applyFilters()">
+          <option value="">学段（小学/初中）</option>
+          <option value="小学">小学</option>
+          <option value="初中">初中</option>
+        </select>
+        <select id="nature-select" class="filter-select" onchange="applyFilters()">
+          <option value="">办学性质</option>
+        </select>
+        <input type="text" id="community-search" placeholder="搜索对口小区..." class="filter-input" oninput="applyFilters()" />
+        <button onclick="resetFilters()" class="filter-btn">重置筛选</button>
+        <span class="filter-count" id="result-count">共 0 所学校</span>
+      </div>
+
+      <div id="school-list" class="school-grid"></div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div class="icon">🔍</div>
+        <p>没有匹配的学校</p>
+      </div>
+
+      <div id="pagination" class="pagination-wrap" style="display:none;">
+        <div class="pagination">
+          <button onclick="prevPage()" id="prev-btn" class="page-btn" disabled>上一页</button>
+          <span class="page-info" id="page-info">第 1 页 / 共 1 页</span>
+          <button onclick="nextPage()" id="next-btn" class="page-btn" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学区小区 -->
+    <div id="tab-community" style="display:none;">
+      <div class="filter-bar">
+        <input type="text" id="community-search-input" placeholder="搜索小区名称..." class="filter-input" oninput="applyCommunityFilters()" />
+        <select id="community-district-select" class="filter-select" onchange="onCommunityDistrictChange()">
+          <option value="">区域</option>
+        </select>
+        <select id="community-school-select" class="filter-select" onchange="applyCommunityFilters()" style="min-width: 180px;">
+          <option value="">对口学校</option>
+        </select>
+        <select id="community-price-range" class="filter-select" onchange="applyCommunityFilters()">
+          <option value="">价格范围</option>
+          <option value="0-3">3万以下</option>
+          <option value="3-5">3-5万</option>
+          <option value="5-8">5-8万</option>
+          <option value="8-999">8万以上</option>
+        </select>
+        <select id="community-price-sort" class="filter-select" onchange="applyCommunityFilters()">
+          <option value="">默认排序</option>
+          <option value="desc">价格从高到低</option>
+          <option value="asc">价格从低到高</option>
+        </select>
+        <button onclick="resetCommunityFilters()" class="filter-btn">重置筛选</button>
+        <span class="filter-count" id="community-result-count">共 0 个小区</span>
+      </div>
+      <div style="overflow-x: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); background: #fff;">
+        <table class="data-table" id="community-table" style="margin-top: 0;">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>小区名称</th>
+              <th>区域</th>
+              <th>均价(万/㎡)</th>
+              <th>总价范围(万)</th>
+              <th>主力户型</th>
+              <th>对口学校</th>
+              <th>建成年代</th>
+            </tr>
+          </thead>
+          <tbody id="community-tbody"></tbody>
+        </table>
+      </div>
+      <div id="community-empty" class="empty-state" style="display:none;">
+        <div class="icon">🔍</div>
+        <p>没有匹配的小区</p>
+      </div>
+      <div id="community-pagination" class="pagination-wrap" style="display:none;">
+        <div class="pagination">
+          <button onclick="prevCommunityPage()" id="comm-prev-btn" class="page-btn" disabled>上一页</button>
+          <span class="page-info" id="comm-page-info">第 1 页 / 共 1 页</span>
+          <button onclick="nextCommunityPage()" id="comm-next-btn" class="page-btn" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 房价对比 -->
+    <div id="tab-price" style="display:none;">
+      <div class="price-stats">
+        <div class="price-stat">
+          <div class="label">小区总数</div>
+          <div class="value" id="price-total-communities">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">最高均价</div>
+          <div class="value red" id="price-max-avg">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">最低均价</div>
+          <div class="value green" id="price-min-avg">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">平均均价</div>
+          <div class="value" id="price-avg-avg">0</div>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="price-compare-search" placeholder="搜索小区..." class="filter-input" oninput="applyPriceCompareFilters()" />
+        <select id="price-compare-district" class="filter-select" onchange="onPriceCompareDistrictChange()">
+          <option value="">区域</option>
+        </select>
+        <select id="price-compare-school" class="filter-select" onchange="applyPriceCompareFilters()" style="min-width: 180px;">
+          <option value="">对口学校</option>
+        </select>
+        <select id="price-sort-select" class="filter-select" onchange="applyPriceCompareFilters()">
+          <option value="desc">价格从高到低</option>
+          <option value="asc">价格从低到高</option>
+        </select>
+        <button onclick="resetPriceCompareFilters()" class="filter-btn">重置筛选</button>
+        <span class="filter-count" id="price-compare-count">共 0 个小区</span>
+      </div>
+      <div id="price-compare-list"></div>
+      <div id="price-compare-pagination" class="pagination-wrap" style="display:none;">
+        <div class="pagination">
+          <button onclick="prevPriceComparePage()" id="pc-prev-btn" class="page-btn" disabled>上一页</button>
+          <span class="page-info" id="pc-page-info">第 1 页 / 共 1 页</span>
+          <button onclick="nextPriceComparePage()" id="pc-next-btn" class="page-btn" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中考成绩 -->
+    <div id="tab-exam" style="display:none;">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="icon" style="background: #e8f5e9; color: #0A8754;">📊</div>
+          <div><div class="num" id="exam-total-schools">0</div><div class="label">展示学校数</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #e3f2fd; color: #1565c0;">🎓</div>
+          <div><div class="num" id="exam-avg-rate">0%</div><div class="label">平均优高率</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="icon" style="background: #fff3e0; color: #e65100;">🏆</div>
+          <div><div class="num" id="exam-top-school">-</div><div class="label">优高率最高</div></div>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <select id="exam-district-select" class="filter-select" onchange="renderExamData()">
+          <option value="">全部区域</option>
+        </select>
+        <select id="exam-nature-select" class="filter-select" onchange="renderExamData()">
+          <option value="">学校性质不限</option>
+          <option value="公办">公办</option>
+          <option value="民办">民办</option>
+          <option value="民转公">民转公</option>
+        </select>
+        <select id="exam-sort" class="filter-select" onchange="renderExamData()">
+          <option value="excellent-desc">优高率高→低</option>
+          <option value="excellent-asc">优高率低→高</option>
+          <option value="key-desc">重高率高→低</option>
+          <option value="key-asc">重高率低→高</option>
+        </select>
+        <input type="text" id="exam-search" placeholder="搜索学校名称..." class="filter-input" oninput="renderExamData()" />
+        <span class="filter-count" id="exam-result-count">共 0 所学校</span>
+      </div>
+      <div class="policy-section">
+        <h3><span class="icon">📋</span> 重点初中中考成绩</h3>
+        <table class="data-table" id="exam-table">
+          <thead><tr><th>学校名称</th><th>区域</th><th>类型</th><th>优高率</th><th>重高率</th><th>最高分</th><th>参考人数</th><th>数据年份</th></tr></thead>
+          <tbody id="exam-table-body"></tbody>
+        </table>
+      </div>
+      <div style="text-align:center; color:#999; font-size:13px; padding:16px 0;">
+        📅 数据来源：各学校官方发布及家长帮、19楼等教育论坛整理 ｜ 仅供参考
+      </div>
+    </div>
+
+    <!-- 房价行情 -->
+    <div id="tab-market" style="display:none;">
+      <div class="price-stats">
+        <div class="price-stat">
+          <div class="label">最新均价</div>
+          <div class="value" id="price-latest">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">环比涨跌</div>
+          <div class="value" id="price-mom">0%</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">历史最高</div>
+          <div class="value" id="price-max">0</div>
+        </div>
+        <div class="price-stat">
+          <div class="label">历史最低</div>
+          <div class="value" id="price-min">0</div>
+        </div>
+      </div>
+
+      <!-- 小区对比筛选区 -->
+      <div class="policy-section">
+        <h3><span class="icon">🔍</span> 小区对比筛选</h3>
+        <div class="filter-bar">
+          <select id="market-district" class="filter-select" onchange="onMarketDistrictChange()">
+            <option value="">全部区域</option>
+          </select>
+          <select id="market-school-select" class="filter-select" onchange="applyMarketFilters()" style="min-width: 180px;">
+            <option value="">对口学校</option>
+          </select>
+          <input type="text" id="market-community" class="filter-input" placeholder="小区名称..." oninput="applyMarketFilters()" />
+          <input type="text" id="market-primary-school" class="filter-input" list="primary-school-list" placeholder="选择小学..." onchange="applyMarketFilters()" style="width:220px;" />
+          <datalist id="primary-school-list"></datalist>
+          <input type="text" id="market-middle-school" class="filter-input" list="middle-school-list" placeholder="选择中学..." onchange="applyMarketFilters()" style="width:220px;" />
+          <datalist id="middle-school-list"></datalist>
+          <select id="market-school-nature" class="filter-select" onchange="applyMarketFilters()">
+            <option value="">学校性质不限</option>
+            <option value="公办">公办</option>
+            <option value="民办">民办</option>
+          </select>
+          <select id="market-exam-rate" class="filter-select" onchange="applyMarketFilters()">
+            <option value="">优高率不限</option>
+            <option value="90">≥90%</option>
+            <option value="80">≥80%</option>
+            <option value="70">≥70%</option>
+            <option value="60">≥60%</option>
+            <option value="0">有优高率数据</option>
+          </select>
+          <select id="market-sort" class="filter-select" onchange="applyMarketFilters()">
+            <option value="price-desc">均价高→低</option>
+            <option value="price-asc">均价低→高</option>
+            <option value="rate-desc">优高率高→低</option>
+            <option value="rate-asc">优高率低→高</option>
+          </select>
+          <span class="filter-count" id="market-count">共 0 个小区</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>小区名称</th>
+                <th>区域</th>
+                <th>均价(元/㎡)</th>
+                <th>总价(万)</th>
+                <th>对口学校</th>
+                <th>优高率</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="market-table-body"></tbody>
+          </table>
+        </div>
+        <div id="market-pagination" class="pagination-wrap" style="display:none;">
+          <div class="pagination">
+            <button class="page-btn" id="market-prev" onclick="changeMarketPage(-1)">上一页</button>
+            <span class="page-info" id="market-page-info"></span>
+            <button class="page-btn" id="market-next" onclick="changeMarketPage(1)">下一页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 板块分析 -->
+    <div id="tab-plate" style="display:none;">
+      <div class="policy-section">
+        <h3><span class="icon">💰</span> 预算分段推荐</h3>
+        <div class="budget-row" id="budget-recommendations"></div>
+      </div>
+
+      <div class="plate-section">
+        <div class="plate-section-title">主城区板块</div>
+        <div id="plate-main"></div>
+      </div>
+
+      <div class="plate-section">
+        <div class="plate-section-title">近郊区板块</div>
+        <div id="plate-suburb"></div>
+      </div>
+    </div>
+
+    <!-- 购房政策 -->
+    <div id="tab-policy" style="display:none;">
+      <div class="policy-section">
+        <h3><span class="icon">🏠</span> 一、限购政策</h3>
+        <div class="policy-subsection">
+          <h4>区域限购情况</h4>
+          <table class="data-table">
+            <thead><tr><th>区域</th><th>限购情况</th><th>说明</th></tr></thead>
+            <tbody id="policy-purchase-limit"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>购房条件</h4>
+          <ul class="policy-list" id="policy-purchase-conditions"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>购房套数限制</h4>
+          <ul class="policy-list" id="policy-purchase-count"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">💰</span> 二、贷款政策</h3>
+        <div class="policy-subsection">
+          <h4>首付比例</h4>
+          <table class="data-table">
+            <thead><tr><th>情况</th><th>首付比例</th></tr></thead>
+            <tbody id="policy-down-payment"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>贷款利率（参考）</h4>
+          <table class="data-table">
+            <thead><tr><th>类型</th><th>利率</th><th>说明</th></tr></thead>
+            <tbody id="policy-loan-rate"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>公积金贷款额度</h4>
+          <table class="data-table">
+            <thead><tr><th>条件</th><th>最高额度</th></tr></thead>
+            <tbody id="policy-fund-limit"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">📋</span> 三、税费参考</h3>
+        <div class="policy-subsection">
+          <h4>契税</h4>
+          <table class="data-table">
+            <thead><tr><th>情况</th><th>税率</th></tr></thead>
+            <tbody id="policy-deed-tax"></tbody>
+          </table>
+        </div>
+        <div class="policy-subsection">
+          <h4>其他费用</h4>
+          <ul class="policy-list" id="policy-other-fees"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">📄</span> 四、落户政策</h3>
+        <div class="policy-subsection">
+          <h4>人才落户</h4>
+          <ul class="policy-list" id="policy-talents"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>积分落户</h4>
+          <ul class="policy-list" id="policy-points"></ul>
+        </div>
+        <div class="policy-subsection">
+          <h4>投靠落户</h4>
+          <ul class="policy-list" id="policy-family"></ul>
+        </div>
+      </div>
+
+      <div class="policy-section">
+        <h3><span class="icon">💡</span> 五、购房建议</h3>
+        <div class="policy-subsection" id="policy-advice"></div>
+      </div>
+
+      <div style="text-align:center; color:#999; font-size:13px; padding:16px 0;">
+        📅 最后更新：2025年 ｜ 📌 建议关注：杭州住保房管局官网、杭州公积金中心官网
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 学校详情弹窗 -->
+<div id="school-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center;">
+  <div style="background:#fff; border-radius:12px; padding:0; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1px solid #eee; position:sticky; top:0; background:#fff; border-radius:12px 12px 0 0;">
+      <h3 id="modal-school-name" style="font-size:18px; font-weight:600; color:#333; margin:0;">学校详情</h3>
+      <span style="font-size:24px; cursor:pointer; color:#999;" onclick="closeModal()">&times;</span>
+    </div>
+    <div id="modal-content" style="padding:24px;"></div>
+  </div>
+</div>
+
+<script>
+// 全局数据
+const allSchools = window.schools || [];
+const schoolStatsData = window.schoolStats || {};
+const priceData = window.priceData || [];
+const priceStats = window.priceStats || {};
+const communityPrices = window.communityPrices || [];
+
+// 构建小区价格查找表
+const priceLookup = {};
+communityPrices.forEach(p => {
+  priceLookup[p.name] = p;
+});
+
+// 分页变量
+let currentPage = 1;
+const pageSize = 24;
+let filteredSchools = [];
+
+// 学区小区变量
+let communityLoaded = false;
+let currentCommunityPage = 1;
+const communityPageSize = 24;
+let filteredCommunities = [];
+
+// 房价对比变量
+let priceCompareLoaded = false;
+let currentPriceComparePage = 1;
+const priceComparePageSize = 24;
+let filteredPriceCompare = [];
+
+// 房价行情（小区对比）变量
+let marketLoaded = false;
+let currentMarketPage = 1;
+const marketPageSize = 20;
+let filteredMarket = [];
+// 学校名称 -> 优高率 查找表（examData 声明后填充）
+const schoolExamRateMap = {};
+// 小学名称 -> 对口初中 查找表（allSchools 声明后填充）
+const primaryToMiddleMap = {};
+// 初中 -> [对口小学列表] 查找表（allSchools 声明后填充）
+const middleToPrimaryMap = {};
+// 学校名称 -> 学校性质(公办/民办) 查找表（allSchools/examData 声明后填充）
+const schoolNatureMap = {};
+
+// 中考成绩变量
+let examLoaded = false;
+
+// 中考成绩数据（手动整理，来源：各学校官方发布及教育论坛）
+const examData = [
+  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 95.3, key_rate: 78.5, max_score: 588, students: 312, year: 2024 },
+  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 93.8, key_rate: 76.2, max_score: 585, students: 428, year: 2024 },
+  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 98.2, key_rate: 85.3, max_score: 592, students: 286, year: 2024 },
+  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 91.5, key_rate: 72.8, max_score: 583, students: 356, year: 2024 },
+  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 89.6, key_rate: 68.5, max_score: 580, students: 298, year: 2024 },
+  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 90.2, key_rate: 70.3, max_score: 581, students: 312, year: 2024 },
+  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 82.5, key_rate: 58.6, max_score: 575, students: 528, year: 2024 },
+  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 78.3, key_rate: 52.1, max_score: 572, students: 486, year: 2024 },
+  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 80.6, key_rate: 55.8, max_score: 574, students: 412, year: 2024 },
+  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 79.5, key_rate: 54.2, max_score: 573, students: 386, year: 2024 },
+  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 72.8, key_rate: 45.3, max_score: 568, students: 358, year: 2024 },
+  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 75.6, key_rate: 48.9, max_score: 570, students: 342, year: 2024 },
+  { name: '杭州市钱学森学校', district: '上城区', type: '公办', excellent_rate: 81.2, key_rate: 56.8, max_score: 574, students: 218, year: 2024 },
+  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 83.5, key_rate: 59.2, max_score: 576, students: 465, year: 2024 },
+  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 76.8, key_rate: 50.5, max_score: 571, students: 432, year: 2024 },
+  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 74.2, key_rate: 47.6, max_score: 569, students: 386, year: 2024 },
+  { name: '杭州市东城中学', district: '上城区', type: '公办', excellent_rate: 71.5, key_rate: 44.2, max_score: 567, students: 412, year: 2024 },
+  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 77.6, key_rate: 51.8, max_score: 571, students: 358, year: 2024 },
+  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 73.5, key_rate: 46.3, max_score: 568, students: 396, year: 2024 },
+  { name: '杭州市文晖实验学校', district: '拱墅区', type: '公办', excellent_rate: 70.8, key_rate: 43.5, max_score: 566, students: 312, year: 2024 },
+  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 84.6, key_rate: 61.2, max_score: 577, students: 512, year: 2024 },
+  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 86.2, key_rate: 63.8, max_score: 579, students: 286, year: 2024 },
+  { name: '浙江省杭州滨兴学校', district: '滨江区', type: '公办', excellent_rate: 75.3, key_rate: 49.6, max_score: 570, students: 268, year: 2024 },
+  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 78.9, key_rate: 53.5, max_score: 572, students: 312, year: 2024 },
+  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 80.8, key_rate: 56.2, max_score: 574, students: 386, year: 2024 },
+  { name: '杭州市开元中学', district: '上城区', type: '公办', excellent_rate: 68.5, key_rate: 40.8, max_score: 565, students: 328, year: 2024 },
+  { name: '杭州市惠兴中学', district: '上城区', type: '公办', excellent_rate: 72.3, key_rate: 45.6, max_score: 568, students: 296, year: 2024 },
+  { name: '杭州市青春中学', district: '拱墅区', type: '公办', excellent_rate: 69.2, key_rate: 41.5, max_score: 566, students: 312, year: 2024 },
+  { name: '杭州市朝晖中学', district: '拱墅区', type: '公办', excellent_rate: 67.8, key_rate: 39.6, max_score: 564, students: 356, year: 2024 },
+  { name: '杭州市杭师大东城实验学校', district: '上城区', type: '公办', excellent_rate: 70.5, key_rate: 43.2, max_score: 567, students: 342, year: 2024 },
+];
+
+// 填充学校名称 -> 优高率 查找表
+examData.forEach(e => { schoolExamRateMap[e.name] = e.excellent_rate; });
+// 填充学校名称 -> 学校性质 查找表
+// 来源1：school_data 的 school_nature（非民办=公办）
+allSchools.forEach(s => {
+  if (s.school_nature === '非民办') schoolNatureMap[s.school_name] = '公办';
+  else if (s.school_nature) schoolNatureMap[s.school_name] = s.school_nature;
+});
+// 来源2：examData 的 type（民办/公办），优先级更高
+examData.forEach(e => { if (e.type) schoolNatureMap[e.name] = e.type; });
+// 填充小学名称 -> 对口初中 查找表
+allSchools.forEach(s => {
+  if (s.direct_middle_school && s.direct_middle_school.trim()) {
+    primaryToMiddleMap[s.school_name] = s.direct_middle_school.trim();
+    // 反向：初中 -> [对口小学列表]
+    const mid = s.direct_middle_school.trim();
+    if (!middleToPrimaryMap[mid]) middleToPrimaryMap[mid] = [];
+    if (!middleToPrimaryMap[mid].includes(s.school_name)) middleToPrimaryMap[mid].push(s.school_name);
+  }
+});
+
+// 板块分析数据
+const plateDataMain = [
+  { district: '上城区', plates: [
+    { name: '钱江新城', price: '70000-100000', feature: '城市新中心，配套完善，江景资源丰富', target: '改善/高端' },
+    { name: '湖滨/武林', price: '60000-80000', feature: '传统市中心，商业发达，交通便利', target: '改善' },
+    { name: '城东新城', price: '45000-60000', feature: '交通枢纽，规划利好，性价比高', target: '刚需/改善' },
+    { name: '九堡', price: '35000-45000', feature: '地铁便利，配套成熟，价格亲民', target: '刚需' },
+  ]},
+  { district: '西湖区', plates: [
+    { name: '文教区', price: '60000-80000', feature: '学区优质，人文氛围浓厚，配套成熟', target: '改善' },
+    { name: '申花', price: '55000-70000', feature: '新兴高端板块，商业配套完善', target: '改善' },
+    { name: '之江', price: '35000-50000', feature: '环境优美，价格适中，适合宜居', target: '刚需/改善' },
+    { name: '留下/小和山', price: '28000-35000', feature: '价格低洼，环境好，通勤略远', target: '刚需' },
+  ]},
+  { district: '拱墅区', plates: [
+    { name: '桥西', price: '50000-65000', feature: '运河景观，历史文化，配套完善', target: '改善' },
+    { name: '申花', price: '55000-70000', feature: '高端居住区，商业发达', target: '改善' },
+    { name: '东新/三塘', price: '35000-45000', feature: '性价比高，配套成熟', target: '刚需/改善' },
+    { name: '祥符', price: '40000-50000', feature: '新兴板块，规划利好', target: '刚需/改善' },
+  ]},
+  { district: '滨江区', plates: [
+    { name: '滨江区政府', price: '55000-70000', feature: '高新区核心，产业发达，配套完善', target: '改善' },
+    { name: '彩虹城', price: '45000-55000', feature: '江景资源，教育优质', target: '改善' },
+    { name: '浦沿', price: '35000-45000', feature: '价格适中，配套逐步完善', target: '刚需/改善' },
+  ]},
+];
+
+const plateDataSuburb = [
+  { district: '余杭区', plates: [
+    { name: '未来科技城', price: '40000-55000', feature: '科创中心，规划一流，发展潜力大', target: '刚需/改善' },
+    { name: '良渚', price: '30000-40000', feature: '文化遗址，环境优美，价格亲民', target: '刚需/改善' },
+    { name: '闲林', price: '25000-30000', feature: '价格低洼，环境好', target: '刚需' },
+  ]},
+  { district: '萧山区', plates: [
+    { name: '奥体', price: '45000-60000', feature: '亚运会核心，配套完善', target: '改善' },
+    { name: '市北', price: '35000-45000', feature: '性价比高，配套成熟', target: '刚需/改善' },
+    { name: '南部卧城', price: '25000-35000', feature: '价格低洼，适合刚需', target: '刚需' },
+  ]},
+  { district: '临平区', plates: [
+    { name: '临平新城', price: '28000-35000', feature: '配套完善，价格适中', target: '刚需/改善' },
+    { name: '星桥', price: '22000-28000', feature: '价格低洼，地铁便利', target: '刚需' },
+  ]},
+  { district: '钱塘区', plates: [
+    { name: '下沙', price: '28000-35000', feature: '大学城，配套完善', target: '刚需/改善' },
+    { name: '大江东', price: '20000-28000', feature: '价格低洼，规划利好', target: '刚需' },
+  ]},
+];
+
+const budgetRecommendations = [
+  { budget: '200万以下', areas: '临安、桐庐、建德等远郊', desc: '适合预算有限的刚需，选择远郊小户型或二手房' },
+  { budget: '200-300万', areas: '临平、钱塘、萧山南部、余杭闲林', desc: '刚需主力选择，可购买80-100㎡小三房' },
+  { budget: '300-500万', areas: '城东新城、九堡、之江、未来科技城、萧山奥体周边', desc: '改善入门，可购买100-120㎡大三房' },
+  { budget: '500-800万', areas: '申花、桥西、滨江、钱江新城二期', desc: '高端改善，可购买120-150㎡四房' },
+  { budget: '800万以上', areas: '钱江新城核心、西湖景区周边、滨江核心', desc: '豪宅或江景大平层' },
+];
+
+const policyData = {
+  purchaseLimit: [
+    { area: '上城/拱墅/西湖/滨江', status: '有限购', desc: '本地户籍不限，外地需社保/个税' },
+    { area: '余杭/萧山/临平/钱塘/富阳', status: '不限购', desc: '无户籍社保要求' },
+  ],
+  purchaseConditions: [
+    '主城四区（上城/拱墅/西湖/滨江）：外地户籍需1年连续社保或个税',
+    '其他区域：无限制，可直接购买',
+  ],
+  purchaseCount: [
+    '本地户籍：主城区限2套，其他不限',
+    '外地户籍：主城区限1套',
+  ],
+  downPayment: [
+    { case: '首套（无房贷记录）', rate: '30%' },
+    { case: '二套（有房贷记录未结清）', rate: '60%' },
+    { case: '二套（有房贷记录已结清）', rate: '40%' },
+  ],
+  loanRate: [
+    { type: '商业贷款', rate: 'LPR+60BP', desc: '首套利率约4.2%，二套约4.9%' },
+    { type: '公积金贷款', rate: '3.1%', desc: '首套个人最高50万，夫妻最高100万' },
+  ],
+  fundLimit: [
+    { case: '单人缴存', amount: '最高50万' },
+    { case: '夫妻双方缴存', amount: '最高100万' },
+    { case: '高层次人才', amount: '最高150万' },
+  ],
+  deedTax: [
+    { case: '首套90㎡以下', rate: '1%' },
+    { case: '首套90㎡以上', rate: '1.5%' },
+    { case: '二套', rate: '2%' },
+    { case: '三套及以上', rate: '3%' },
+  ],
+  otherFees: [
+    '增值税及附加：满2年免征，不满2年按5.3%征收',
+    '个人所得税：满5年唯一免征，否则按差额20%或全额1%征收',
+    '中介费：约1-2%',
+    '评估费、公证费等：约0.5%',
+  ],
+  talents: [
+    '全日制本科及以上学历，在杭工作并缴纳社保',
+    '45周岁以下可直接落户',
+    '高层次人才享受购房补贴',
+  ],
+  points: [
+    '累计积分达到100分以上',
+    '在杭连续缴纳社保3年以上',
+    '拥有合法稳定住所',
+  ],
+  family: [
+    '夫妻投靠：结婚满2年，一方有杭州户籍',
+    '老年投靠：男年满60周岁，女年满55周岁，子女在杭有合法住所',
+    '未成年子女投靠：父母一方有杭州户籍',
+  ],
+  advice: [
+    { title: '刚需购房策略', steps: [
+      '优先考虑地铁沿线，通勤便利',
+      '关注学区资源，为子女教育考虑',
+      '总价控制在家庭年收入的5-8倍',
+      '关注共有产权房等保障性住房',
+    ]},
+    { title: '改善置换策略', steps: [
+      '先卖后买，释放首套资格',
+      '关注「卖旧买新」补贴政策',
+      '二手房挂牌周期较长，提前规划',
+    ]},
+  ],
+};
+
+// 初始化
+function init() {
+  // 初始化统计数据
+  document.getElementById('stat-total-schools').textContent = schoolStatsData.total_schools || allSchools.length;
+  document.getElementById('stat-total-mappings').textContent = schoolStatsData.total_mappings || 0;
+  document.getElementById('stat-district-count').textContent = schoolStatsData.district_stats ? Object.keys(schoolStatsData.district_stats).length : 0;
+
+  // 初始化区域下拉框
+  const districts = [...new Set(allSchools.map(s => s.district))].sort();
+  const districtSelect = document.getElementById('district-select');
+  districts.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    districtSelect.appendChild(option);
+  });
+
+  // 初始化办学性质下拉框
+  const natures = [...new Set(allSchools.map(s => s.school_nature).filter(Boolean))];
+  const natureSelect = document.getElementById('nature-select');
+  natures.forEach(n => {
+    const option = document.createElement('option');
+    option.value = n;
+    option.textContent = n === '非民办' ? '公办' : n;
+    natureSelect.appendChild(option);
+  });
+
+  // 加载房价数据
+  loadPriceData();
+
+  // 加载板块分析
+  loadPlateData();
+
+  // 加载政策数据
+  loadPolicyData();
+
+  // 初始化中考成绩区域筛选
+  const examDistricts = [...new Set(examData.map(s => s.district))].sort();
+  const examDistrictSelect = document.getElementById('exam-district-select');
+  examDistricts.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    examDistrictSelect.appendChild(option);
+  });
+
+  // 初始渲染学校列表
+  applyFilters();
+}
+
+// 切换Tab
+function switchTab(tab) {
+  document.querySelectorAll('.tab-item').forEach(item => item.classList.remove('active'));
+  document.querySelector(`.tab-item[onclick="switchTab('${tab}')"]`).classList.add('active');
+  
+  const tabs = ['school', 'community', 'price', 'exam', 'market', 'plate', 'policy'];
+  tabs.forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if (el) el.style.display = 'none';
+  });
+  
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+  
+  // 懒加载
+  if (tab === 'community' && !communityLoaded) loadCommunityData();
+  if (tab === 'price' && !priceCompareLoaded) loadPriceCompareData();
+  if (tab === 'exam' && !examLoaded) renderExamData();
+  if (tab === 'market' && !marketLoaded) loadMarketData();
+}
+
+// 应用筛选
+function applyFilters() {
+  const schoolSearch = document.getElementById('school-search').value.trim();
+  const district = document.getElementById('district-select').value;
+  const stage = document.getElementById('stage-select').value;
+  const nature = document.getElementById('nature-select').value;
+  const communitySearch = document.getElementById('community-search').value.trim();
+
+  filteredSchools = allSchools.filter(s => {
+    if (schoolSearch && !s.school_name.includes(schoolSearch)) return false;
+    if (district && s.district !== district) return false;
+    if (stage && s.school_type !== stage) return false;
+    if (nature && s.school_nature !== nature) return false;
+    if (communitySearch) {
+      const allCommunities = [...(s.communities_hj || []), ...(s.communities_xhzr || [])];
+      if (!allCommunities.some(c => c.includes(communitySearch))) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('result-count').textContent = `共 ${filteredSchools.length} 所学校`;
+  currentPage = 1;
+  renderSchools();
+}
+
+// 重置筛选
+function resetFilters() {
+  document.getElementById('school-search').value = '';
+  document.getElementById('district-select').value = '';
+  document.getElementById('stage-select').value = '';
+  document.getElementById('nature-select').value = '';
+  document.getElementById('community-search').value = '';
+  applyFilters();
+}
+
+// 渲染学校列表
+function renderSchools() {
+  const totalPages = Math.ceil(filteredSchools.length / pageSize);
+  const start = (currentPage - 1) * pageSize;
+  const pagedSchools = filteredSchools.slice(start, start + pageSize);
+
+  const list = document.getElementById('school-list');
+  const empty = document.getElementById('empty-state');
+  const pagination = document.getElementById('pagination');
+
+  if (filteredSchools.length === 0) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    pagination.style.display = 'none';
+    return;
+  }
+
+  list.style.display = 'grid';
+  empty.style.display = 'none';
+
+  list.innerHTML = pagedSchools.map((s, idx) => {
+    const typeClass = s.school_type === '小学' ? 'tag-success' : s.school_type === '初中' ? 'tag-warning' : 'tag-info';
+    const natureLabel = s.school_nature === '非民办' ? '公办' : s.school_nature;
+    const hjComm = s.communities_hj || [];
+    const xhzrComm = s.communities_xhzr || [];
+    const allComm = [...hjComm, ...xhzrComm];
+    const commDisplay = allComm.slice(0, 8).map(c => {
+      const price = priceLookup[c];
+      const priceStr = price && price.avg_price > 0 ? `¥${(price.avg_price/10000).toFixed(1)}万` : '';
+      return `<span class="comm-tag" title="${price ? `${price.layout} · 总价${price.min_total}-${price.max_total}万` : ''}">${c}${priceStr ? `<span style="font-size:10px;opacity:0.7;margin-left:4px;">${priceStr}</span>` : ''}</span>`;
+    }).join('');
+    const moreComm = allComm.length > 8 ? `<span class="comm-more">+${allComm.length - 8}</span>` : '';
+    const schoolIdx = start + idx;
+    
+    return `
+      <div class="school-card" onclick="showSchoolDetail(${schoolIdx})">
+        <div class="card-top">
+          <div class="school-name">${s.school_name}</div>
+          <div class="card-tags">
+            <span class="tag ${typeClass}">${s.school_type}</span>
+            <span class="tag tag-info">${natureLabel}</span>
+          </div>
+        </div>
+        <div class="card-info">
+          <div><span class="label">区域：</span><span class="val">${s.district}</span></div>
+          ${s.address ? `<div><span class="label">地址：</span><span class="val">${s.address}</span></div>` : ''}
+          ${s.direct_middle_school ? `<div><span class="label">对口初中：</span><span class="val">${s.direct_middle_school}</span></div>` : ''}
+          ${s.student_count > 0 ? `<div><span class="label">规模：</span><span class="val">${s.student_count}学生 / ${s.class_count}班 / ${s.teacher_count}教师</span></div>` : ''}
+        </div>
+        ${allComm.length > 0 ? `
+          <div class="communities">
+            <div class="title">对口小区（${allComm.length}个）</div>
+            <div class="comm-list">${commDisplay}${moreComm}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // 分页
+  document.getElementById('page-info').textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+  document.getElementById('prev-btn').disabled = currentPage <= 1;
+  document.getElementById('next-btn').disabled = currentPage >= totalPages;
+  pagination.style.display = filteredSchools.length > pageSize ? 'flex' : 'none';
+}
+
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderSchools();
+  }
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(filteredSchools.length / pageSize);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderSchools();
+  }
+}
+
+// 加载房价数据
+function loadPriceData() {
+  document.getElementById('price-latest').textContent = (priceStats.latest_price || 0).toLocaleString() + '元/㎡';
+  
+  const mom = priceStats.latest_mom || 0;
+  const momEl = document.getElementById('price-mom');
+  momEl.textContent = (mom >= 0 ? '+' : '') + mom + '%';
+  momEl.className = 'value ' + (mom >= 0 ? 'red' : 'green');
+  
+  document.getElementById('price-max').textContent = (priceStats.max_price || 0).toLocaleString() + '元/㎡';
+  document.getElementById('price-min').textContent = (priceStats.min_price || 0).toLocaleString() + '元/㎡';
+}
+
+// ============ 房价行情：小区对比 ============
+
+// 模糊匹配优高率：学校名直接命中或包含关系
+function matchExamRate(schoolName) {
+  if (!schoolName) return null;
+  if (schoolExamRateMap[schoolName] != null) return schoolExamRateMap[schoolName];
+  for (const [examName, rate] of Object.entries(schoolExamRateMap)) {
+    if (schoolName.includes(examName) || examName.includes(schoolName)) return rate;
+  }
+  return null;
+}
+
+// 计算小区的最高优高率（对口多所学校取最大值）
+// 桥接路径：小区 → 小学 → 对口初中 → 优高率
+function getCommunityMaxRate(community) {
+  if (!community.schools || !community.schools.length) return null;
+  let max = null;
+  community.schools.forEach(s => {
+    let r = matchExamRate(s);
+    if (r == null) {
+      const mid = primaryToMiddleMap[s];
+      if (mid) r = matchExamRate(mid);
+    }
+    if (r != null && (max == null || r > max)) max = r;
+  });
+  return max;
+}
+
+function loadMarketData() {
+  marketLoaded = true;
+  // 初始化区域下拉
+  const districtSelect = document.getElementById('market-district');
+  const districts = [...new Set(communityPrices.flatMap(c => c.districts || []))].sort();
+  districts.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    districtSelect.appendChild(opt);
+  });
+
+  // 初始化对口学校下拉（全部学校）
+  updateMarketSchoolOptions('');
+
+  // 初始化小学/中学可搜索下拉
+  const primaryList = document.getElementById('primary-school-list');
+  const middleList = document.getElementById('middle-school-list');
+  const primarySchools = [];
+  const middleSchools = [];
+  allSchools.forEach(s => {
+    if (s.school_type === '小学') primarySchools.push(s.school_name);
+    else if (s.school_type === '初中' || (s.school_type || '').includes('九年')) middleSchools.push(s.school_name);
+  });
+  [...new Set(primarySchools)].sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    primaryList.appendChild(opt);
+  });
+  [...new Set(middleSchools)].sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    middleList.appendChild(opt);
+  });
+
+  applyMarketFilters();
+}
+
+// 区域联动学校下拉框
+function updateMarketSchoolOptions(district) {
+  const schoolSelect = document.getElementById('market-school-select');
+  const prevValue = schoolSelect.value;
+  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  
+  const schoolList = allSchools
+    .filter(s => !district || s.district === district)
+    .map(s => s.school_name);
+  const schoolSet = new Set(schoolList);
+  
+  let hasPrev = false;
+  [...schoolSet].sort().forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    if (s === prevValue) hasPrev = true;
+    schoolSelect.appendChild(option);
+  });
+  
+  if (prevValue && !hasPrev) schoolSelect.value = '';
+  else schoolSelect.value = prevValue;
+}
+
+function onMarketDistrictChange() {
+  const district = document.getElementById('market-district').value;
+  updateMarketSchoolOptions(district);
+  applyMarketFilters();
+}
+
+function applyMarketFilters() {
+  const district = document.getElementById('market-district').value;
+  const schoolKw = document.getElementById('market-school-select').value;
+  const commKw = document.getElementById('market-community').value.trim();
+  const primarySchool = document.getElementById('market-primary-school').value.trim();
+  const middleSchool = document.getElementById('market-middle-school').value.trim();
+  const schoolNature = document.getElementById('market-school-nature').value;
+  const rateFilter = document.getElementById('market-exam-rate').value;
+  const sortKey = document.getElementById('market-sort').value;
+
+  // 中学桥接：该中学对口的小学列表
+  const bridgedPrimaries = middleSchool ? (middleToPrimaryMap[middleSchool] || []) : [];
+
+  let list = communityPrices.filter(c => {
+    if (district && !(c.districts || []).includes(district)) return false;
+    if (commKw && !c.name.includes(commKw)) return false;
+    if (schoolKw && !(c.schools || []).some(s => s.includes(schoolKw))) return false;
+    // 小学精确筛选：schools 直接包含该小学
+    if (primarySchool && !(c.schools || []).includes(primarySchool)) return false;
+    // 中学筛选：schools 直接包含该中学，或包含该中学桥接的对口小学
+    if (middleSchool) {
+      const direct = (c.schools || []).includes(middleSchool);
+      const bridged = bridgedPrimaries.length > 0 && (c.schools || []).some(s => bridgedPrimaries.includes(s));
+      if (!direct && !bridged) return false;
+    }
+    // 学校性质筛选：对口学校中存在指定性质的
+    if (schoolNature) {
+      const hasNature = (c.schools || []).some(s => {
+        // 直接匹配学校性质
+        if (schoolNatureMap[s] === schoolNature) return true;
+        // 桥接：小学对口初中的性质
+        const mid = primaryToMiddleMap[s];
+        if (mid && schoolNatureMap[mid] === schoolNature) return true;
+        return false;
+      });
+      if (!hasNature) return false;
+    }
+    const rate = getCommunityMaxRate(c);
+    if (rateFilter !== '') {
+      const thr = parseFloat(rateFilter);
+      if (thr > 0) {
+        if (rate == null || rate < thr) return false;
+      } else {
+        // thr === 0：只要有优高率数据
+        if (rate == null) return false;
+      }
+    }
+    return true;
+  });
+
+  // 排序
+  list.sort((a, b) => {
+    const ra = getCommunityMaxRate(a);
+    const rb = getCommunityMaxRate(b);
+    switch (sortKey) {
+      case 'price-asc': return a.avg_price - b.avg_price;
+      case 'rate-desc': return (rb ?? -1) - (ra ?? -1);
+      case 'rate-asc': return (ra ?? 9999) - (rb ?? 9999);
+      case 'price-desc':
+      default: return b.avg_price - a.avg_price;
+    }
+  });
+
+  filteredMarket = list;
+  currentMarketPage = 1;
+  renderMarketTable();
+}
+
+function renderMarketTable() {
+  const total = filteredMarket.length;
+  document.getElementById('market-count').textContent = `共 ${total} 个小区`;
+  const totalPages = Math.max(1, Math.ceil(total / marketPageSize));
+  if (currentMarketPage > totalPages) currentMarketPage = totalPages;
+  const start = (currentMarketPage - 1) * marketPageSize;
+  const pageList = filteredMarket.slice(start, start + marketPageSize);
+
+  const tbody = document.getElementById('market-table-body');
+  if (!pageList.length) {
+    const schoolNature = document.getElementById('market-school-nature').value;
+    let emptyMsg = '暂无符合条件的小区';
+    if (schoolNature === '民办') {
+      emptyMsg = '民办学校实行电脑摇号录取，没有固定学区房，因此无法按"民办"筛选对口小区。<br/>如文澜、建兰、外国语等民办初中均在全市范围内摇号招生，不与具体小区绑定。';
+    }
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#666;padding:40px;line-height:1.8;">${emptyMsg}</td></tr>`;
+  } else {
+    tbody.innerHTML = pageList.map((c, i) => {
+      const rate = getCommunityMaxRate(c);
+      const rateTxt = rate != null ? rate.toFixed(1) + '%' : '<span style="color:#ccc;">—</span>';
+      const totalRange = c.min_total && c.max_total ? `${c.min_total}-${c.max_total}` : '—';
+      const schools = (c.schools || []).slice(0, 3).join('、') + ((c.schools || []).length > 3 ? ' 等' : '');
+      return `<tr>
+        <td>${c.name}</td>
+        <td>${(c.districts || []).join('、')}</td>
+        <td>${c.avg_price.toLocaleString()}</td>
+        <td>${totalRange}</td>
+        <td style="max-width:260px;">${schools || '—'}</td>
+        <td>${rateTxt}</td>
+        <td><button class="filter-btn" style="padding:4px 10px;" onclick="openCommunityTrend('${c.name.replace(/'/g, "\\'")}')">看趋势</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // 分页
+  const pagWrap = document.getElementById('market-pagination');
+  if (total > marketPageSize) {
+    pagWrap.style.display = 'flex';
+    document.getElementById('market-page-info').textContent = `${currentMarketPage} / ${totalPages}`;
+    document.getElementById('market-prev').disabled = currentMarketPage <= 1;
+    document.getElementById('market-next').disabled = currentMarketPage >= totalPages;
+  } else {
+    pagWrap.style.display = 'none';
+  }
+}
+
+function changeMarketPage(delta) {
+  const totalPages = Math.max(1, Math.ceil(filteredMarket.length / marketPageSize));
+  const next = Math.min(Math.max(1, currentMarketPage + delta), totalPages);
+  if (next !== currentMarketPage) {
+    currentMarketPage = next;
+    renderMarketTable();
+  }
+}
+
+// ============ 跳转小区趋势详情页 ============
+
+function openCommunityTrend(communityName) {
+  window.open('community_trend.html?name=' + encodeURIComponent(communityName), '_blank');
+}
+
+// 加载板块分析
+function loadPlateData() {
+  const budgetDiv = document.getElementById('budget-recommendations');
+  budgetDiv.innerHTML = budgetRecommendations.map(b => `
+    <div class="budget-card">
+      <div class="budget-title">💰 ${b.budget}</div>
+      <div class="budget-areas">${b.areas}</div>
+      <div class="budget-desc">${b.desc}</div>
+    </div>
+  `).join('');
+
+  const mainDiv = document.getElementById('plate-main');
+  mainDiv.innerHTML = plateDataMain.map(group => `
+    <div class="plate-group">
+      <div class="plate-group-title">${group.district}</div>
+      <table class="data-table">
+        <thead><tr><th>板块</th><th>均价参考</th><th>特点</th><th>适合人群</th></tr></thead>
+        <tbody>${group.plates.map(p => `<tr><td>${p.name}</td><td>${p.price}</td><td>${p.feature}</td><td>${p.target}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `).join('');
+
+  const suburbDiv = document.getElementById('plate-suburb');
+  suburbDiv.innerHTML = plateDataSuburb.map(group => `
+    <div class="plate-group">
+      <div class="plate-group-title">${group.district}</div>
+      <table class="data-table">
+        <thead><tr><th>板块</th><th>均价参考</th><th>特点</th><th>适合人群</th></tr></thead>
+        <tbody>${group.plates.map(p => `<tr><td>${p.name}</td><td>${p.price}</td><td>${p.feature}</td><td>${p.target}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `).join('');
+}
+
+// 加载政策数据
+function loadPolicyData() {
+  document.getElementById('policy-purchase-limit').innerHTML = policyData.purchaseLimit.map(item => 
+    `<tr><td>${item.area}</td><td>${item.status}</td><td>${item.desc}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-purchase-conditions').innerHTML = policyData.purchaseConditions.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-purchase-count').innerHTML = policyData.purchaseCount.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-down-payment').innerHTML = policyData.downPayment.map(item => 
+    `<tr><td>${item.case}</td><td>${item.rate}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-loan-rate').innerHTML = policyData.loanRate.map(item => 
+    `<tr><td>${item.type}</td><td>${item.rate}</td><td>${item.desc}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-fund-limit').innerHTML = policyData.fundLimit.map(item => 
+    `<tr><td>${item.case}</td><td>${item.amount}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-deed-tax').innerHTML = policyData.deedTax.map(item => 
+    `<tr><td>${item.case}</td><td>${item.rate}</td></tr>`
+  ).join('');
+
+  document.getElementById('policy-other-fees').innerHTML = policyData.otherFees.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-talents').innerHTML = policyData.talents.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-points').innerHTML = policyData.points.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-family').innerHTML = policyData.family.map(item => 
+    `<li>${item}</li>`
+  ).join('');
+
+  document.getElementById('policy-advice').innerHTML = policyData.advice.map(item => `
+    <div class="policy-subsection">
+      <h4>${item.title}</h4>
+      <ul class="policy-list">
+        ${item.steps.map(step => `<li>${step}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+// ==================== 学校详情弹窗 ====================
+function showSchoolDetail(idx) {
+  const s = filteredSchools[idx];
+  if (!s) return;
+  
+  document.getElementById('modal-school-name').textContent = s.school_name;
+  const hjComm = s.communities_hj || [];
+  const xhzrComm = s.communities_xhzr || [];
+  const allComm = [...hjComm, ...xhzrComm];
+  const natureLabel = s.school_nature === '非民办' ? '公办' : s.school_nature;
+  
+  const commHtml = allComm.length > 0 ? allComm.map(c => {
+    const price = priceLookup[c];
+    const priceStr = price && price.avg_price > 0 
+      ? `¥${(price.avg_price/10000).toFixed(1)}万/㎡${price.layout ? ' · ' + price.layout : ''}${price.min_total ? ' · 总价' + price.min_total + '-' + price.max_total + '万' : ''}` 
+      : '暂无价格';
+    return `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee;">
+      <span style="color:#333;">${c}</span>
+      <span style="color:#0A8754; font-size:13px;">${priceStr}</span>
+    </div>`;
+  }).join('') : '<div style="color:#999; padding:8px 0;">暂无对口小区数据</div>';
+  
+  document.getElementById('modal-content').innerHTML = `
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <span class="tag ${s.school_type === '小学' ? 'tag-success' : 'tag-warning'}">${s.school_type}</span>
+      <span class="tag tag-info">${natureLabel}</span>
+      <span class="tag tag-success">${s.district}</span>
+    </div>
+    <div style="font-size:14px; line-height:2; color:#555;">
+      ${s.address ? `<div><strong>地址：</strong>${s.address}</div>` : ''}
+      ${s.school_tel ? `<div><strong>电话：</strong>${s.school_tel}</div>` : ''}
+      ${s.student_count > 0 ? `<div><strong>规模：</strong>${s.student_count}学生 / ${s.class_count}班 / ${s.teacher_count}教师</div>` : ''}
+      ${s.direct_middle_school ? `<div><strong>对口初中：</strong>${s.direct_middle_school}</div>` : ''}
+      ${s.school_scope ? `<div><strong>招生范围：</strong>${s.school_scope}</div>` : ''}
+    </div>
+    <div style="margin-top:16px;">
+      <div style="font-size:15px; font-weight:600; margin-bottom:8px;">对口小区（${allComm.length}个）</div>
+      ${commHtml}
+    </div>
+    ${s.school_detail ? `<div style="margin-top:16px; padding:12px; background:#f5f7fa; border-radius:8px; font-size:13px; color:#666; line-height:1.8;">${s.school_detail}</div>` : ''}
+  `;
+  
+  document.getElementById('school-modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('school-modal').style.display = 'none';
+}
+
+// ==================== 学区小区 ====================
+function loadCommunityData() {
+  communityLoaded = true;
+  
+  // 初始化区域下拉框
+  const districts = [...new Set(communityPrices.flatMap(p => p.districts || []))].sort();
+  const districtSelect = document.getElementById('community-district-select');
+  districts.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    districtSelect.appendChild(option);
+  });
+  
+  // 初始化学校下拉框（全部学校）
+  updateCommunitySchoolOptions('');
+  
+  applyCommunityFilters();
+}
+
+// 区域联动学校下拉框：选区域后只显示该区域的学校（基于 allSchools.district）
+function updateCommunitySchoolOptions(district) {
+  const schoolSelect = document.getElementById('community-school-select');
+  const prevValue = schoolSelect.value;
+  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  
+  // 从 allSchools 按区域过滤，确保学校归属正确
+  const schoolList = allSchools
+    .filter(s => !district || s.district === district)
+    .map(s => s.school_name);
+  const schoolSet = new Set(schoolList);
+  
+  let hasPrev = false;
+  [...schoolSet].sort().forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    if (s === prevValue) hasPrev = true;
+    schoolSelect.appendChild(option);
+  });
+  
+  // 若已选学校不在新区域范围内则清空
+  if (prevValue && !hasPrev) schoolSelect.value = '';
+  else schoolSelect.value = prevValue;
+}
+
+function onCommunityDistrictChange() {
+  const district = document.getElementById('community-district-select').value;
+  updateCommunitySchoolOptions(district);
+  applyCommunityFilters();
+}
+
+function applyCommunityFilters() {
+  const search = document.getElementById('community-search-input').value.trim();
+  const district = document.getElementById('community-district-select').value;
+  const school = document.getElementById('community-school-select').value;
+  const priceRange = document.getElementById('community-price-range').value;
+  const priceSort = document.getElementById('community-price-sort').value;
+  
+  filteredCommunities = communityPrices.filter(p => {
+    if (search && !p.name.includes(search)) return false;
+    if (district && !(p.districts || []).includes(district)) return false;
+    if (school && !(p.schools || []).includes(school)) return false;
+    if (priceRange) {
+      const [min, max] = priceRange.split('-').map(Number);
+      const priceWan = (p.avg_price || 0) / 10000;
+      if (priceWan < min || priceWan >= max) return false;
+    }
+    return p.avg_price > 0;
+  });
+  
+  // 价格排序
+  if (priceSort === 'desc') {
+    filteredCommunities.sort((a, b) => b.avg_price - a.avg_price);
+  } else if (priceSort === 'asc') {
+    filteredCommunities.sort((a, b) => a.avg_price - b.avg_price);
+  }
+  
+  document.getElementById('community-result-count').textContent = `共 ${filteredCommunities.length} 个小区`;
+  currentCommunityPage = 1;
+  renderCommunityList();
+}
+
+function resetCommunityFilters() {
+  document.getElementById('community-search-input').value = '';
+  document.getElementById('community-district-select').value = '';
+  document.getElementById('community-price-range').value = '';
+  document.getElementById('community-price-sort').value = '';
+  updateCommunitySchoolOptions('');
+  applyCommunityFilters();
+}
+
+function renderCommunityList() {
+  const totalPages = Math.ceil(filteredCommunities.length / communityPageSize);
+  const start = (currentCommunityPage - 1) * communityPageSize;
+  const paged = filteredCommunities.slice(start, start + communityPageSize);
+  
+  const tbody = document.getElementById('community-tbody');
+  const empty = document.getElementById('community-empty');
+  const pagination = document.getElementById('community-pagination');
+  
+  if (filteredCommunities.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    pagination.style.display = 'none';
+    return;
+  }
+  
+  empty.style.display = 'none';
+  
+  tbody.innerHTML = paged.map((p, i) => {
+    const districts = (p.districts || []).join('、');
+    const schools = (p.schools || []);
+    const uniqueSchools = [...new Set(schools)];
+    const schoolText = uniqueSchools.length > 2
+      ? `${uniqueSchools.slice(0, 2).join('、')} 等${uniqueSchools.length}所`
+      : uniqueSchools.join('、');
+    const priceWan = (p.avg_price / 10000).toFixed(1);
+    const totalRange = (p.min_total && p.max_total) ? `${p.min_total}-${p.max_total}` : '-';
+    const rowNum = start + i + 1;
+    return `
+      <tr>
+        <td style="color:#999; text-align:center;">${rowNum}</td>
+        <td style="font-weight:600; color:#333;">${p.name}</td>
+        <td>${districts}</td>
+        <td style="color:#c62828; font-weight:600;">${priceWan}</td>
+        <td>${totalRange}</td>
+        <td style="font-size:12px; color:#666;">${p.layout || '-'}</td>
+        <td style="font-size:12px; color:#0A8754;">${schoolText || '-'}</td>
+        <td>${p.year || '-'}</td>
+      </tr>
+    `;
+  }).join('');
+  
+  document.getElementById('comm-page-info').textContent = `第 ${currentCommunityPage} 页 / 共 ${totalPages} 页`;
+  document.getElementById('comm-prev-btn').disabled = currentCommunityPage <= 1;
+  document.getElementById('comm-next-btn').disabled = currentCommunityPage >= totalPages;
+  pagination.style.display = filteredCommunities.length > communityPageSize ? 'flex' : 'none';
+}
+
+function prevCommunityPage() {
+  if (currentCommunityPage > 1) { currentCommunityPage--; renderCommunityList(); }
+}
+
+function nextCommunityPage() {
+  const totalPages = Math.ceil(filteredCommunities.length / communityPageSize);
+  if (currentCommunityPage < totalPages) { currentCommunityPage++; renderCommunityList(); }
+}
+
+// ==================== 房价对比 ====================
+function loadPriceCompareData() {
+  priceCompareLoaded = true;
+  
+  // 初始化区域下拉框
+  const districts = [...new Set(communityPrices.flatMap(p => p.districts || []))].sort();
+  const districtSelect = document.getElementById('price-compare-district');
+  districts.forEach(d => {
+    const option = document.createElement('option');
+    option.value = d;
+    option.textContent = d;
+    districtSelect.appendChild(option);
+  });
+  
+  // 初始化学校下拉框（全部学校）
+  updatePriceCompareSchoolOptions('');
+  
+  // 统计
+  const priced = communityPrices.filter(p => p.avg_price > 0);
+  const prices = priced.map(p => p.avg_price);
+  document.getElementById('price-total-communities').textContent = priced.length;
+  document.getElementById('price-max-avg').textContent = Math.max(...prices).toLocaleString() + '元/㎡';
+  document.getElementById('price-min-avg').textContent = Math.min(...prices).toLocaleString() + '元/㎡';
+  document.getElementById('price-avg-avg').textContent = Math.round(prices.reduce((a,b) => a+b, 0) / prices.length).toLocaleString() + '元/㎡';
+  
+  applyPriceCompareFilters();
+}
+
+// 区域联动学校下拉框
+function updatePriceCompareSchoolOptions(district) {
+  const schoolSelect = document.getElementById('price-compare-school');
+  const prevValue = schoolSelect.value;
+  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  
+  const schoolList = allSchools
+    .filter(s => !district || s.district === district)
+    .map(s => s.school_name);
+  const schoolSet = new Set(schoolList);
+  
+  let hasPrev = false;
+  [...schoolSet].sort().forEach(s => {
+    const option = document.createElement('option');
+    option.value = s;
+    option.textContent = s;
+    if (s === prevValue) hasPrev = true;
+    schoolSelect.appendChild(option);
+  });
+  
+  if (prevValue && !hasPrev) schoolSelect.value = '';
+  else schoolSelect.value = prevValue;
+}
+
+function onPriceCompareDistrictChange() {
+  const district = document.getElementById('price-compare-district').value;
+  updatePriceCompareSchoolOptions(district);
+  applyPriceCompareFilters();
+}
+
+function applyPriceCompareFilters() {
+  const search = document.getElementById('price-compare-search').value.trim();
+  const district = document.getElementById('price-compare-district').value;
+  const school = document.getElementById('price-compare-school').value;
+  const sort = document.getElementById('price-sort-select').value;
+  
+  filteredPriceCompare = communityPrices.filter(p => {
+    if (p.avg_price <= 0) return false;
+    if (search && !p.name.includes(search)) return false;
+    if (district && !(p.districts || []).includes(district)) return false;
+    if (school && !(p.schools || []).includes(school)) return false;
+    return true;
+  });
+  
+  filteredPriceCompare.sort((a, b) => sort === 'desc' ? b.avg_price - a.avg_price : a.avg_price - b.avg_price);
+  
+  document.getElementById('price-compare-count').textContent = `共 ${filteredPriceCompare.length} 个小区`;
+  currentPriceComparePage = 1;
+  renderPriceCompareList();
+}
+
+function resetPriceCompareFilters() {
+  document.getElementById('price-compare-search').value = '';
+  document.getElementById('price-compare-district').value = '';
+  document.getElementById('price-sort-select').value = 'desc';
+  updatePriceCompareSchoolOptions('');
+  applyPriceCompareFilters();
+}
+
+function renderPriceCompareList() {
+  const totalPages = Math.ceil(filteredPriceCompare.length / priceComparePageSize);
+  const start = (currentPriceComparePage - 1) * priceComparePageSize;
+  const paged = filteredPriceCompare.slice(start, start + priceComparePageSize);
+  
+  const list = document.getElementById('price-compare-list');
+  const pagination = document.getElementById('price-compare-pagination');
+  
+  if (filteredPriceCompare.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>没有匹配的小区</p></div>';
+    pagination.style.display = 'none';
+    return;
+  }
+  
+  list.innerHTML = `
+    <div class="policy-section">
+      <table class="data-table">
+        <thead><tr>
+          <th style="width:50px;">排名</th>
+          <th>小区名称</th>
+          <th>区域</th>
+          <th>均价(元/㎡)</th>
+          <th>总价范围</th>
+          <th>主力户型</th>
+          <th>对口学校</th>
+        </tr></thead>
+        <tbody>
+          ${paged.map((p, i) => {
+            const rank = start + i + 1;
+            const districts = (p.districts || []).join('、');
+            const schools = (p.schools || []).slice(0, 2).join('、');
+            const moreSchools = (p.schools || []).length > 2 ? `等${p.schools.length}所` : '';
+            const rankColor = rank <= 3 ? '#c62828' : rank <= 10 ? '#e65100' : '#999';
+            const priceColor = p.avg_price >= 80000 ? '#c62828' : p.avg_price >= 50000 ? '#e65100' : p.avg_price >= 30000 ? '#333' : '#0A8754';
+            return `<tr>
+              <td style="font-weight:700; color:${rankColor}; text-align:center;">${rank}</td>
+              <td style="font-weight:600;">${p.name}</td>
+              <td>${districts}</td>
+              <td style="color:${priceColor}; font-weight:600;">${p.avg_price.toLocaleString()}</td>
+              <td>${p.min_total ? p.min_total + '-' + p.max_total + '万' : '-'}</td>
+              <td style="font-size:13px;">${p.layout || '-'}</td>
+              <td style="font-size:13px;">${schools}${moreSchools || '-'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  document.getElementById('pc-page-info').textContent = `第 ${currentPriceComparePage} 页 / 共 ${totalPages} 页`;
+  document.getElementById('pc-prev-btn').disabled = currentPriceComparePage <= 1;
+  document.getElementById('pc-next-btn').disabled = currentPriceComparePage >= totalPages;
+  pagination.style.display = filteredPriceCompare.length > priceComparePageSize ? 'flex' : 'none';
+}
+
+function prevPriceComparePage() {
+  if (currentPriceComparePage > 1) { currentPriceComparePage--; renderPriceCompareList(); }
+}
+
+function nextPriceComparePage() {
+  const totalPages = Math.ceil(filteredPriceCompare.length / priceComparePageSize);
+  if (currentPriceComparePage < totalPages) { currentPriceComparePage++; renderPriceCompareList(); }
+}
+
+// ==================== 中考成绩 ====================
+function renderExamData() {
+  const search = document.getElementById('exam-search').value.trim();
+  const district = document.getElementById('exam-district-select').value;
+  const nature = document.getElementById('exam-nature-select').value;
+  const sort = document.getElementById('exam-sort').value;
+  
+  let filtered = examData.filter(s => {
+    if (search && !s.name.includes(search)) return false;
+    if (district && s.district !== district) return false;
+    if (nature && s.type !== nature) return false;
+    return true;
+  });
+  
+  // 排序
+  switch (sort) {
+    case 'excellent-asc':
+      filtered.sort((a, b) => a.excellent_rate - b.excellent_rate);
+      break;
+    case 'key-desc':
+      filtered.sort((a, b) => b.key_rate - a.key_rate);
+      break;
+    case 'key-asc':
+      filtered.sort((a, b) => a.key_rate - b.key_rate);
+      break;
+    case 'excellent-desc':
+    default:
+      filtered.sort((a, b) => b.excellent_rate - a.excellent_rate);
+      break;
+  }
+  
+  document.getElementById('exam-total-schools').textContent = filtered.length;
+  const avgRate = filtered.length > 0 ? (filtered.reduce((a, b) => a + b.excellent_rate, 0) / filtered.length).toFixed(1) : 0;
+  document.getElementById('exam-avg-rate').textContent = avgRate + '%';
+  document.getElementById('exam-top-school').textContent = filtered.length > 0 ? filtered[0].name.substring(0, 8) : '-';
+  document.getElementById('exam-result-count').textContent = `共 ${filtered.length} 所学校`;
+  
+  const tbody = document.getElementById('exam-table-body');
+  tbody.innerHTML = filtered.map(s => {
+    const rateClass = s.excellent_rate >= 85 ? 'red' : s.excellent_rate >= 70 ? '' : 'green';
+    return `<tr>
+      <td style="font-weight:600;">${s.name}</td>
+      <td>${s.district}</td>
+      <td><span class="tag ${s.type === '民办' ? 'tag-warning' : 'tag-success'}">${s.type}</span></td>
+      <td style="color:${rateClass === 'red' ? '#c62828' : rateClass === 'green' ? '#0A8754' : '#333'}; font-weight:600;">${s.excellent_rate}%</td>
+      <td>${s.key_rate}%</td>
+      <td>${s.max_score}</td>
+      <td>${s.students}</td>
+      <td>${s.year}</td>
+    </tr>`;
+  }).join('');
+}
+
+// 页面加载完成后初始化
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
