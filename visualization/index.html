@@ -35,15 +35,36 @@
     .stat-card .num { font-size: 28px; font-weight: 700; color: #333; }
     .stat-card .label { font-size: 13px; color: #999; }
 
-    .filter-bar { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .filter-input { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; width: 200px; outline: none; transition: border-color 0.2s; }
+    .filter-bar {
+      background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+      display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-label { font-size: 12px; color: #999; font-weight: 500; line-height: 1; }
+    .filter-input {
+      padding: 7px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px;
+      width: 180px; outline: none; transition: border-color 0.2s; height: 34px;
+    }
     .filter-input:focus { border-color: #0A8754; }
-    .filter-input::placeholder { color: #999; }
-    .filter-select { padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; min-width: 120px; outline: none; cursor: pointer; transition: border-color 0.2s; }
+    .filter-input::placeholder { color: #bbb; }
+    .filter-select {
+      padding: 7px 28px 7px 12px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px;
+      min-width: 120px; outline: none; cursor: pointer; transition: border-color 0.2s;
+      height: 34px; background: #fff; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
     .filter-select:focus { border-color: #0A8754; }
-    .filter-btn { padding: 8px 16px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px; background: #fff; color: #666; cursor: pointer; transition: all 0.2s; }
+    .filter-select:hover { border-color: #0A8754; }
+    .filter-divider { width: 1px; height: 34px; background: #e8e8e8; flex-shrink: 0; }
+    .sort-group { margin-left: auto; }
+    .filter-btn {
+      padding: 7px 16px; border: 1px solid #dcdfe6; border-radius: 6px; font-size: 14px;
+      background: #fff; color: #666; cursor: pointer; transition: all 0.2s; height: 34px;
+    }
     .filter-btn:hover { border-color: #0A8754; color: #0A8754; }
-    .filter-count { margin-left: auto; color: #999; font-size: 13px; }
+    .filter-count { color: #999; font-size: 13px; line-height: 34px; white-space: nowrap; }
 
     .school-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
     .school-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
@@ -150,20 +171,35 @@
       </div>
 
       <div class="filter-bar">
-        <input type="text" id="school-search" placeholder="搜索学校名称..." class="filter-input" oninput="applyFilters()" />
-        <select id="district-select" class="filter-select" onchange="applyFilters()">
-          <option value="">区域</option>
-        </select>
-        <select id="stage-select" class="filter-select" onchange="applyFilters()">
-          <option value="">学段（小学/初中）</option>
-          <option value="小学">小学</option>
-          <option value="初中">初中</option>
-        </select>
-        <select id="nature-select" class="filter-select" onchange="applyFilters()">
-          <option value="">办学性质</option>
-        </select>
-        <input type="text" id="community-search" placeholder="搜索对口小区..." class="filter-input" oninput="applyFilters()" />
-        <button onclick="resetFilters()" class="filter-btn">重置筛选</button>
+        <div class="filter-group">
+          <span class="filter-label">区域</span>
+          <select id="district-select" class="filter-select" onchange="applyFilters()">
+            <option value="">全部区域</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">学段</span>
+          <select id="stage-select" class="filter-select" onchange="applyFilters()">
+            <option value="">全部学段</option>
+            <option value="小学">小学</option>
+            <option value="初中">初中</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">办学性质</span>
+          <select id="nature-select" class="filter-select" onchange="applyFilters()">
+            <option value="">全部性质</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">学校名称</span>
+          <input type="text" id="school-search" placeholder="输入学校名称" class="filter-input" oninput="applyFilters()" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">对口小区</span>
+          <input type="text" id="community-search" placeholder="输入小区名称" class="filter-input" oninput="applyFilters()" />
+        </div>
+        <button onclick="resetFilters()" class="filter-btn">重置</button>
         <span class="filter-count" id="result-count">共 0 所学校</span>
       </div>
 
@@ -185,26 +221,42 @@
     <!-- 学区小区 -->
     <div id="tab-community" style="display:none;">
       <div class="filter-bar">
-        <input type="text" id="community-search-input" placeholder="搜索小区名称..." class="filter-input" oninput="applyCommunityFilters()" />
-        <select id="community-district-select" class="filter-select" onchange="onCommunityDistrictChange()">
-          <option value="">区域</option>
-        </select>
-        <select id="community-school-select" class="filter-select" onchange="applyCommunityFilters()" style="min-width: 180px;">
-          <option value="">对口学校</option>
-        </select>
-        <select id="community-price-range" class="filter-select" onchange="applyCommunityFilters()">
-          <option value="">价格范围</option>
-          <option value="0-3">3万以下</option>
-          <option value="3-5">3-5万</option>
-          <option value="5-8">5-8万</option>
-          <option value="8-999">8万以上</option>
-        </select>
-        <select id="community-price-sort" class="filter-select" onchange="applyCommunityFilters()">
-          <option value="">默认排序</option>
-          <option value="desc">价格从高到低</option>
-          <option value="asc">价格从低到高</option>
-        </select>
-        <button onclick="resetCommunityFilters()" class="filter-btn">重置筛选</button>
+        <div class="filter-group">
+          <span class="filter-label">区域</span>
+          <select id="community-district-select" class="filter-select" onchange="onCommunityDistrictChange()">
+            <option value="">全部区域</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">对口学校</span>
+          <select id="community-school-select" class="filter-select" onchange="applyCommunityFilters()" style="min-width: 180px;">
+            <option value="">全部学校</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">价格范围</span>
+          <select id="community-price-range" class="filter-select" onchange="applyCommunityFilters()">
+            <option value="">不限</option>
+            <option value="0-3">3万以下</option>
+            <option value="3-5">3-5万</option>
+            <option value="5-8">5-8万</option>
+            <option value="8-999">8万以上</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">小区名称</span>
+          <input type="text" id="community-search-input" placeholder="输入小区名称" class="filter-input" oninput="applyCommunityFilters()" />
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group sort-group">
+          <span class="filter-label">排序</span>
+          <select id="community-price-sort" class="filter-select" onchange="applyCommunityFilters()">
+            <option value="">默认排序</option>
+            <option value="desc">价格高→低</option>
+            <option value="asc">价格低→高</option>
+          </select>
+        </div>
+        <button onclick="resetCommunityFilters()" class="filter-btn">重置</button>
         <span class="filter-count" id="community-result-count">共 0 个小区</span>
       </div>
       <div style="overflow-x: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); background: #fff;">
@@ -258,18 +310,31 @@
         </div>
       </div>
       <div class="filter-bar">
-        <input type="text" id="price-compare-search" placeholder="搜索小区..." class="filter-input" oninput="applyPriceCompareFilters()" />
-        <select id="price-compare-district" class="filter-select" onchange="onPriceCompareDistrictChange()">
-          <option value="">区域</option>
-        </select>
-        <select id="price-compare-school" class="filter-select" onchange="applyPriceCompareFilters()" style="min-width: 180px;">
-          <option value="">对口学校</option>
-        </select>
-        <select id="price-sort-select" class="filter-select" onchange="applyPriceCompareFilters()">
-          <option value="desc">价格从高到低</option>
-          <option value="asc">价格从低到高</option>
-        </select>
-        <button onclick="resetPriceCompareFilters()" class="filter-btn">重置筛选</button>
+        <div class="filter-group">
+          <span class="filter-label">区域</span>
+          <select id="price-compare-district" class="filter-select" onchange="onPriceCompareDistrictChange()">
+            <option value="">全部区域</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">对口学校</span>
+          <select id="price-compare-school" class="filter-select" onchange="applyPriceCompareFilters()" style="min-width: 180px;">
+            <option value="">全部学校</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">小区名称</span>
+          <input type="text" id="price-compare-search" placeholder="输入小区名称" class="filter-input" oninput="applyPriceCompareFilters()" />
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group sort-group">
+          <span class="filter-label">排序</span>
+          <select id="price-sort-select" class="filter-select" onchange="applyPriceCompareFilters()">
+            <option value="desc">价格高→低</option>
+            <option value="asc">价格低→高</option>
+          </select>
+        </div>
+        <button onclick="resetPriceCompareFilters()" class="filter-btn">重置</button>
         <span class="filter-count" id="price-compare-count">共 0 个小区</span>
       </div>
       <div id="price-compare-list"></div>
@@ -299,22 +364,35 @@
         </div>
       </div>
       <div class="filter-bar">
-        <select id="exam-district-select" class="filter-select" onchange="renderExamData()">
-          <option value="">全部区域</option>
-        </select>
-        <select id="exam-nature-select" class="filter-select" onchange="renderExamData()">
-          <option value="">学校性质不限</option>
-          <option value="公办">公办</option>
-          <option value="民办">民办</option>
-          <option value="民转公">民转公</option>
-        </select>
-        <select id="exam-sort" class="filter-select" onchange="renderExamData()">
-          <option value="excellent-desc">优高率高→低</option>
-          <option value="excellent-asc">优高率低→高</option>
-          <option value="key-desc">重高率高→低</option>
-          <option value="key-asc">重高率低→高</option>
-        </select>
-        <input type="text" id="exam-search" placeholder="搜索学校名称..." class="filter-input" oninput="renderExamData()" />
+        <div class="filter-group">
+          <span class="filter-label">区域</span>
+          <select id="exam-district-select" class="filter-select" onchange="renderExamData()">
+            <option value="">全部区域</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">学校性质</span>
+          <select id="exam-nature-select" class="filter-select" onchange="renderExamData()">
+            <option value="">全部性质</option>
+            <option value="公办">公办</option>
+            <option value="民办">民办</option>
+            <option value="民转公">民转公</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">学校名称</span>
+          <input type="text" id="exam-search" placeholder="输入学校名称" class="filter-input" oninput="renderExamData()" />
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group sort-group">
+          <span class="filter-label">排序</span>
+          <select id="exam-sort" class="filter-select" onchange="renderExamData()">
+            <option value="excellent-desc">优高率高→低</option>
+            <option value="excellent-asc">优高率低→高</option>
+            <option value="key-desc">重高率高→低</option>
+            <option value="key-asc">重高率低→高</option>
+          </select>
+        </div>
         <span class="filter-count" id="exam-result-count">共 0 所学校</span>
       </div>
       <div class="policy-section">
@@ -354,36 +432,62 @@
       <div class="policy-section">
         <h3><span class="icon">🔍</span> 小区对比筛选</h3>
         <div class="filter-bar">
-          <select id="market-district" class="filter-select" onchange="onMarketDistrictChange()">
-            <option value="">全部区域</option>
-          </select>
-          <select id="market-school-select" class="filter-select" onchange="applyMarketFilters()" style="min-width: 180px;">
-            <option value="">对口学校</option>
-          </select>
-          <input type="text" id="market-community" class="filter-input" placeholder="小区名称..." oninput="applyMarketFilters()" />
-          <input type="text" id="market-primary-school" class="filter-input" list="primary-school-list" placeholder="选择小学..." onchange="applyMarketFilters()" style="width:220px;" />
-          <datalist id="primary-school-list"></datalist>
-          <input type="text" id="market-middle-school" class="filter-input" list="middle-school-list" placeholder="选择中学..." onchange="applyMarketFilters()" style="width:220px;" />
-          <datalist id="middle-school-list"></datalist>
-          <select id="market-school-nature" class="filter-select" onchange="applyMarketFilters()">
-            <option value="">学校性质不限</option>
-            <option value="公办">公办</option>
-            <option value="民办">民办</option>
-          </select>
-          <select id="market-exam-rate" class="filter-select" onchange="applyMarketFilters()">
-            <option value="">优高率不限</option>
-            <option value="90">≥90%</option>
-            <option value="80">≥80%</option>
-            <option value="70">≥70%</option>
-            <option value="60">≥60%</option>
-            <option value="0">有优高率数据</option>
-          </select>
-          <select id="market-sort" class="filter-select" onchange="applyMarketFilters()">
-            <option value="price-desc">均价高→低</option>
-            <option value="price-asc">均价低→高</option>
-            <option value="rate-desc">优高率高→低</option>
-            <option value="rate-asc">优高率低→高</option>
-          </select>
+          <div class="filter-group">
+            <span class="filter-label">区域</span>
+            <select id="market-district" class="filter-select" onchange="onMarketDistrictChange()">
+              <option value="">全部区域</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">对口学校</span>
+            <select id="market-school-select" class="filter-select" onchange="applyMarketFilters()" style="min-width: 180px;">
+              <option value="">全部学校</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">对口小学</span>
+            <input type="text" id="market-primary-school" class="filter-input" list="primary-school-list" placeholder="选择小学" onchange="applyMarketFilters()" />
+            <datalist id="primary-school-list"></datalist>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">对口中学</span>
+            <input type="text" id="market-middle-school" class="filter-input" list="middle-school-list" placeholder="选择中学" onchange="applyMarketFilters()" />
+            <datalist id="middle-school-list"></datalist>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">学校性质</span>
+            <select id="market-school-nature" class="filter-select" onchange="applyMarketFilters()">
+              <option value="">全部性质</option>
+              <option value="公办">公办</option>
+              <option value="民办">民办</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">优高率</span>
+            <select id="market-exam-rate" class="filter-select" onchange="applyMarketFilters()">
+              <option value="">不限</option>
+              <option value="90">≥90%</option>
+              <option value="80">≥80%</option>
+              <option value="70">≥70%</option>
+              <option value="60">≥60%</option>
+              <option value="0">有数据</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">小区名称</span>
+            <input type="text" id="market-community" class="filter-input" placeholder="输入小区名称" oninput="applyMarketFilters()" />
+          </div>
+          <div class="filter-divider"></div>
+          <div class="filter-group sort-group">
+            <span class="filter-label">排序</span>
+            <select id="market-sort" class="filter-select" onchange="applyMarketFilters()">
+              <option value="price-desc">均价高→低</option>
+              <option value="price-asc">均价低→高</option>
+              <option value="rate-desc">优高率高→低</option>
+              <option value="rate-asc">优高率低→高</option>
+            </select>
+          </div>
+          <button onclick="resetMarketFilters()" class="filter-btn">重置</button>
           <span class="filter-count" id="market-count">共 0 个小区</span>
         </div>
 
@@ -1028,7 +1132,7 @@ function loadMarketData() {
 function updateMarketSchoolOptions(district) {
   const schoolSelect = document.getElementById('market-school-select');
   const prevValue = schoolSelect.value;
-  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  schoolSelect.innerHTML = '<option value="">全部学校</option>';
   
   const schoolList = allSchools
     .filter(s => !district || s.district === district)
@@ -1051,6 +1155,19 @@ function updateMarketSchoolOptions(district) {
 function onMarketDistrictChange() {
   const district = document.getElementById('market-district').value;
   updateMarketSchoolOptions(district);
+  applyMarketFilters();
+}
+
+function resetMarketFilters() {
+  document.getElementById('market-community').value = '';
+  document.getElementById('market-district').value = '';
+  document.getElementById('market-school-select').value = '';
+  document.getElementById('market-primary-school').value = '';
+  document.getElementById('market-middle-school').value = '';
+  document.getElementById('market-school-nature').value = '';
+  document.getElementById('market-exam-rate').value = '';
+  document.getElementById('market-sort').value = 'price-desc';
+  updateMarketSchoolOptions('');
   applyMarketFilters();
 }
 
@@ -1346,7 +1463,7 @@ function loadCommunityData() {
 function updateCommunitySchoolOptions(district) {
   const schoolSelect = document.getElementById('community-school-select');
   const prevValue = schoolSelect.value;
-  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  schoolSelect.innerHTML = '<option value="">全部学校</option>';
   
   // 从 allSchools 按区域过滤，确保学校归属正确
   const schoolList = allSchools
@@ -1410,6 +1527,7 @@ function resetCommunityFilters() {
   document.getElementById('community-district-select').value = '';
   document.getElementById('community-price-range').value = '';
   document.getElementById('community-price-sort').value = '';
+  document.getElementById('community-school-select').value = '';
   updateCommunitySchoolOptions('');
   applyCommunityFilters();
 }
@@ -1503,7 +1621,7 @@ function loadPriceCompareData() {
 function updatePriceCompareSchoolOptions(district) {
   const schoolSelect = document.getElementById('price-compare-school');
   const prevValue = schoolSelect.value;
-  schoolSelect.innerHTML = '<option value="">对口学校</option>';
+  schoolSelect.innerHTML = '<option value="">全部学校</option>';
   
   const schoolList = allSchools
     .filter(s => !district || s.district === district)
@@ -1554,6 +1672,7 @@ function resetPriceCompareFilters() {
   document.getElementById('price-compare-search').value = '';
   document.getElementById('price-compare-district').value = '';
   document.getElementById('price-sort-select').value = 'desc';
+  document.getElementById('price-compare-school').value = '';
   updatePriceCompareSchoolOptions('');
   applyPriceCompareFilters();
 }
