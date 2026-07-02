@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>杭州买房指南 - 数据可视化决策平台</title>
   <script src="./data/school_data.js"></script>
+  <script src="./data/exam_data.js"></script>
   <script src="./data/price_data.js"></script>
   <script src="./data/community_prices.js"></script>
   <style>
@@ -536,7 +537,9 @@
                 <th>小区名称</th>
                 <th>区域</th>
                 <th>均价(元/㎡)</th>
+                <th>面积(㎡)</th>
                 <th>总价(万)</th>
+                <th>户型</th>
                 <th>对口学校</th>
                 <th>优高率</th>
                 <th>操作</th>
@@ -735,110 +738,7 @@ const schoolNatureMap = {};
 // 中考成绩变量
 let examLoaded = false;
 
-// 中考成绩数据（手动整理，来源：各学校官方发布及教育论坛）
-const examData = [
-  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 96.2, key_rate: 79.8, max_score: 590, students: 320, year: 2025 },
-  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 94.5, key_rate: 77.5, max_score: 587, students: 435, year: 2025 },
-  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 98.5, key_rate: 86.2, max_score: 594, students: 292, year: 2025 },
-  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 92.3, key_rate: 74.2, max_score: 585, students: 362, year: 2025 },
-  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 90.5, key_rate: 69.8, max_score: 582, students: 305, year: 2025 },
-  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 91.2, key_rate: 71.8, max_score: 583, students: 318, year: 2025 },
-  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 83.8, key_rate: 60.2, max_score: 577, students: 535, year: 2025 },
-  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 79.5, key_rate: 53.8, max_score: 574, students: 492, year: 2025 },
-  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 81.8, key_rate: 57.2, max_score: 576, students: 418, year: 2025 },
-  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 80.8, key_rate: 55.8, max_score: 575, students: 392, year: 2025 },
-  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 73.8, key_rate: 46.8, max_score: 570, students: 362, year: 2025 },
-  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 76.8, key_rate: 50.2, max_score: 572, students: 348, year: 2025 },
-  { name: '杭州市钱学森学校', district: '上城区', type: '公办', excellent_rate: 82.5, key_rate: 58.2, max_score: 576, students: 225, year: 2025 },
-  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 84.8, key_rate: 60.8, max_score: 578, students: 472, year: 2025 },
-  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 77.8, key_rate: 52.2, max_score: 573, students: 438, year: 2025 },
-  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 75.5, key_rate: 49.2, max_score: 571, students: 392, year: 2025 },
-  { name: '杭州市东城中学', district: '上城区', type: '公办', excellent_rate: 72.8, key_rate: 45.8, max_score: 569, students: 418, year: 2025 },
-  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 78.8, key_rate: 53.2, max_score: 573, students: 362, year: 2025 },
-  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 74.8, key_rate: 47.8, max_score: 570, students: 402, year: 2025 },
-  { name: '杭州市文晖实验学校', district: '拱墅区', type: '公办', excellent_rate: 72.2, key_rate: 45.2, max_score: 568, students: 318, year: 2025 },
-  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 85.8, key_rate: 62.8, max_score: 579, students: 520, year: 2025 },
-  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 87.5, key_rate: 65.2, max_score: 581, students: 292, year: 2025 },
-  { name: '浙江省杭州滨兴学校', district: '滨江区', type: '公办', excellent_rate: 76.5, key_rate: 51.2, max_score: 572, students: 275, year: 2025 },
-  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 80.2, key_rate: 55.2, max_score: 574, students: 318, year: 2025 },
-  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 82.2, key_rate: 57.8, max_score: 576, students: 392, year: 2025 },
-  { name: '杭州市开元中学', district: '上城区', type: '公办', excellent_rate: 70.2, key_rate: 42.5, max_score: 567, students: 335, year: 2025 },
-  { name: '杭州市惠兴中学', district: '上城区', type: '公办', excellent_rate: 73.8, key_rate: 47.2, max_score: 570, students: 302, year: 2025 },
-  { name: '杭州市青春中学', district: '拱墅区', type: '公办', excellent_rate: 70.8, key_rate: 43.2, max_score: 568, students: 318, year: 2025 },
-  { name: '杭州市朝晖中学', district: '拱墅区', type: '公办', excellent_rate: 69.2, key_rate: 41.2, max_score: 566, students: 362, year: 2025 },
-  { name: '杭州市杭师大东城实验学校', district: '上城区', type: '公办', excellent_rate: 71.8, key_rate: 44.8, max_score: 569, students: 348, year: 2025 },
-  
-  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 95.3, key_rate: 78.5, max_score: 588, students: 312, year: 2024 },
-  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 93.8, key_rate: 76.2, max_score: 585, students: 428, year: 2024 },
-  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 98.2, key_rate: 85.3, max_score: 592, students: 286, year: 2024 },
-  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 91.5, key_rate: 72.8, max_score: 583, students: 356, year: 2024 },
-  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 89.6, key_rate: 68.5, max_score: 580, students: 298, year: 2024 },
-  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 90.2, key_rate: 70.3, max_score: 581, students: 312, year: 2024 },
-  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 82.5, key_rate: 58.6, max_score: 575, students: 528, year: 2024 },
-  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 78.3, key_rate: 52.1, max_score: 572, students: 486, year: 2024 },
-  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 80.6, key_rate: 55.8, max_score: 574, students: 412, year: 2024 },
-  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 79.5, key_rate: 54.2, max_score: 573, students: 386, year: 2024 },
-  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 72.8, key_rate: 45.3, max_score: 568, students: 358, year: 2024 },
-  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 75.6, key_rate: 48.9, max_score: 570, students: 342, year: 2024 },
-  { name: '杭州市钱学森学校', district: '上城区', type: '公办', excellent_rate: 81.2, key_rate: 56.8, max_score: 574, students: 218, year: 2024 },
-  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 83.5, key_rate: 59.2, max_score: 576, students: 465, year: 2024 },
-  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 76.8, key_rate: 50.5, max_score: 571, students: 432, year: 2024 },
-  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 74.2, key_rate: 47.6, max_score: 569, students: 386, year: 2024 },
-  { name: '杭州市东城中学', district: '上城区', type: '公办', excellent_rate: 71.5, key_rate: 44.2, max_score: 567, students: 412, year: 2024 },
-  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 77.6, key_rate: 51.8, max_score: 571, students: 358, year: 2024 },
-  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 73.5, key_rate: 46.3, max_score: 568, students: 396, year: 2024 },
-  { name: '杭州市文晖实验学校', district: '拱墅区', type: '公办', excellent_rate: 70.8, key_rate: 43.5, max_score: 566, students: 312, year: 2024 },
-  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 84.6, key_rate: 61.2, max_score: 577, students: 512, year: 2024 },
-  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 86.2, key_rate: 63.8, max_score: 579, students: 286, year: 2024 },
-  { name: '浙江省杭州滨兴学校', district: '滨江区', type: '公办', excellent_rate: 75.3, key_rate: 49.6, max_score: 570, students: 268, year: 2024 },
-  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 78.9, key_rate: 53.5, max_score: 572, students: 312, year: 2024 },
-  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 80.8, key_rate: 56.2, max_score: 574, students: 386, year: 2024 },
-  { name: '杭州市开元中学', district: '上城区', type: '公办', excellent_rate: 68.5, key_rate: 40.8, max_score: 565, students: 328, year: 2024 },
-  { name: '杭州市惠兴中学', district: '上城区', type: '公办', excellent_rate: 72.3, key_rate: 45.6, max_score: 568, students: 296, year: 2024 },
-  { name: '杭州市青春中学', district: '拱墅区', type: '公办', excellent_rate: 69.2, key_rate: 41.5, max_score: 566, students: 312, year: 2024 },
-  { name: '杭州市朝晖中学', district: '拱墅区', type: '公办', excellent_rate: 67.8, key_rate: 39.6, max_score: 564, students: 356, year: 2024 },
-  { name: '杭州市杭师大东城实验学校', district: '上城区', type: '公办', excellent_rate: 70.5, key_rate: 43.2, max_score: 567, students: 342, year: 2024 },
-  
-  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 94.8, key_rate: 77.2, max_score: 586, students: 305, year: 2023 },
-  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 92.5, key_rate: 74.8, max_score: 583, students: 415, year: 2023 },
-  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 97.8, key_rate: 84.5, max_score: 590, students: 278, year: 2023 },
-  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 90.8, key_rate: 71.5, max_score: 581, students: 348, year: 2023 },
-  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 88.5, key_rate: 67.2, max_score: 578, students: 292, year: 2023 },
-  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 89.5, key_rate: 69.2, max_score: 579, students: 305, year: 2023 },
-  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 81.2, key_rate: 57.5, max_score: 573, students: 512, year: 2023 },
-  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 77.5, key_rate: 51.2, max_score: 570, students: 478, year: 2023 },
-  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 79.8, key_rate: 54.8, max_score: 572, students: 405, year: 2023 },
-  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 78.8, key_rate: 53.5, max_score: 571, students: 378, year: 2023 },
-  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 71.5, key_rate: 44.2, max_score: 566, students: 352, year: 2023 },
-  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 74.8, key_rate: 47.8, max_score: 568, students: 338, year: 2023 },
-  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 82.2, key_rate: 58.5, max_score: 574, students: 458, year: 2023 },
-  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 76.2, key_rate: 49.8, max_score: 570, students: 425, year: 2023 },
-  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 73.5, key_rate: 46.8, max_score: 567, students: 380, year: 2023 },
-  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 76.8, key_rate: 51.2, max_score: 570, students: 352, year: 2023 },
-  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 72.8, key_rate: 45.5, max_score: 566, students: 390, year: 2023 },
-  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 83.5, key_rate: 60.5, max_score: 575, students: 505, year: 2023 },
-  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 85.5, key_rate: 62.8, max_score: 577, students: 280, year: 2023 },
-  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 78.2, key_rate: 52.8, max_score: 570, students: 308, year: 2023 },
-  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 79.8, key_rate: 55.5, max_score: 572, students: 380, year: 2023 },
-  
-  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 94.2, key_rate: 76.5, max_score: 584, students: 298, year: 2022 },
-  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 91.8, key_rate: 73.5, max_score: 581, students: 408, year: 2022 },
-  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 97.5, key_rate: 83.8, max_score: 588, students: 272, year: 2022 },
-  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 90.2, key_rate: 70.8, max_score: 579, students: 342, year: 2022 },
-  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 87.8, key_rate: 66.5, max_score: 576, students: 288, year: 2022 },
-  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 88.8, key_rate: 68.5, max_score: 577, students: 300, year: 2022 },
-  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 80.5, key_rate: 56.8, max_score: 571, students: 505, year: 2022 },
-  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 76.8, key_rate: 50.5, max_score: 568, students: 472, year: 2022 },
-  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 79.2, key_rate: 54.2, max_score: 570, students: 400, year: 2022 },
-  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 78.2, key_rate: 52.8, max_score: 569, students: 372, year: 2022 },
-  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 81.5, key_rate: 57.8, max_score: 572, students: 452, year: 2022 },
-  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 75.5, key_rate: 49.2, max_score: 568, students: 418, year: 2022 },
-  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 76.2, key_rate: 50.5, max_score: 568, students: 348, year: 2022 },
-  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 72.2, key_rate: 44.8, max_score: 564, students: 385, year: 2022 },
-  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 82.8, key_rate: 59.8, max_score: 573, students: 498, year: 2022 },
-  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 84.8, key_rate: 62.2, max_score: 575, students: 275, year: 2022 },
-  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 77.5, key_rate: 52.2, max_score: 568, students: 302, year: 2022 },
-];
+// examData 已提取到 data/exam_data.js
 
 // 填充学校名称 -> 优高率 查找表
 examData.forEach(e => { schoolExamRateMap[e.name] = e.excellent_rate; });
@@ -1032,8 +932,47 @@ function init() {
     examDistrictSelect.appendChild(option);
   });
 
+  // 设置默认区域为西湖区
+  document.getElementById('district-select').value = '西湖区';
+  document.getElementById('community-district-select').value = '西湖区';
+  document.getElementById('exam-district-select').value = '西湖区';
+
   // 初始渲染学校列表
   applyFilters();
+
+  // 从 URL 参数恢复筛选状态
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (tab) {
+    switchTab(tab);
+    if (tab === 'market') {
+      const district = params.get('district');
+      const primary = params.get('primary');
+      const middle = params.get('middle');
+      const nature = params.get('nature');
+      const rate = params.get('rate');
+      const community = params.get('community');
+      const sort = params.get('sort');
+      
+      if (district) document.getElementById('market-district').value = district;
+      if (district || primary) {
+        updateMarketPrimaryOptions(district);
+        if (primary && document.querySelector(`#market-primary-school option[value="${primary}"]`)) {
+          document.getElementById('market-primary-school').value = primary;
+        }
+        updateMarketMiddleOptions(district, primary || document.getElementById('market-primary-school').value);
+        if (middle && document.querySelector(`#market-middle-school option[value="${middle}"]`)) {
+          document.getElementById('market-middle-school').value = middle;
+        }
+      }
+      if (nature) document.getElementById('market-school-nature').value = nature;
+      if (rate) document.getElementById('market-exam-rate').value = rate;
+      if (community) document.getElementById('market-community').value = community;
+      if (sort) document.getElementById('market-sort').value = sort;
+      
+      applyMarketFilters();
+    }
+  }
 }
 
 // 切换Tab
@@ -1225,8 +1164,9 @@ function loadMarketData() {
     districtSelect.appendChild(opt);
   });
 
-  updateMarketPrimaryOptions('');
-  updateMarketMiddleOptions('');
+  districtSelect.value = '西湖区';
+  updateMarketPrimaryOptions('西湖区');
+  updateMarketMiddleOptions('西湖区');
 
   applyMarketFilters();
 }
@@ -1409,19 +1349,25 @@ function renderMarketTable() {
     if (schoolNature === '民办') {
       emptyMsg = '民办学校实行电脑摇号录取，没有固定学区房，因此无法按"民办"筛选对口小区。<br/>如文澜、建兰、外国语等民办初中均在全市范围内摇号招生，不与具体小区绑定。';
     }
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#666;padding:40px;line-height:1.8;">${emptyMsg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#666;padding:40px;line-height:1.8;">${emptyMsg}</td></tr>`;
   } else {
     tbody.innerHTML = pageList.map((c, i) => {
       const rate = getCommunityMaxRate(c);
       const rateTxt = rate != null ? rate.toFixed(1) + '%' : '<span style="color:#ccc;">—</span>';
       const totalRange = c.min_total && c.max_total ? `${c.min_total}-${c.max_total}` : '—';
       const schools = (c.schools || []).slice(0, 3).join('、') + ((c.schools || []).length > 3 ? ' 等' : '');
+      const areaRange = c.min_total && c.max_total && c.avg_price 
+        ? `${Math.round(c.min_total * 10000 / c.avg_price)}-${Math.round(c.max_total * 10000 / c.avg_price)}` 
+        : '—';
+      const layout = (c.layout || '—').replace(/\//g, '<br/>');
       return `<tr>
         <td>${c.name}</td>
         <td>${(c.districts || []).join('、')}</td>
         <td>${c.avg_price.toLocaleString()}</td>
+        <td>${areaRange}</td>
         <td>${totalRange}</td>
-        <td style="max-width:260px;">${schools || '—'}</td>
+        <td style="font-size:12px;">${layout}</td>
+        <td style="max-width:200px;">${schools || '—'}</td>
         <td>${rateTxt}</td>
         <td><button class="filter-btn" style="padding:4px 10px;" onclick="openCommunityTrend('${c.name.replace(/'/g, "\\'")}')">看趋势</button></td>
       </tr>`;
@@ -1452,7 +1398,26 @@ function changeMarketPage(delta) {
 // ============ 跳转小区趋势详情页 ============
 
 function openCommunityTrend(communityName) {
-  window.open('community_trend.html?name=' + encodeURIComponent(communityName), '_blank');
+  const district = document.getElementById('market-district').value;
+  const primarySchool = document.getElementById('market-primary-school').value;
+  const middleSchool = document.getElementById('market-middle-school').value;
+  const schoolNature = document.getElementById('market-school-nature').value;
+  const examRate = document.getElementById('market-exam-rate').value;
+  const communityKw = document.getElementById('market-community').value;
+  const sort = document.getElementById('market-sort').value;
+  
+  const params = new URLSearchParams();
+  params.set('name', communityName);
+  params.set('tab', 'market');
+  params.set('district', district);
+  params.set('primary', primarySchool);
+  params.set('middle', middleSchool);
+  params.set('nature', schoolNature);
+  params.set('rate', examRate);
+  params.set('community', communityKw);
+  params.set('sort', sort);
+  
+  window.open('community_trend.html?' + params.toString(), '_blank');
 }
 
 // 加载板块分析
