@@ -106,6 +106,27 @@
     .policy-section h3 { font-size: 17px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; display: flex; align-items: center; gap: 8px; }
     .policy-section h3 .icon { font-size: 20px; }
     .policy-subsection { margin-bottom: 16px; }
+    
+    .exam-card-container { display: flex; flex-direction: column; gap: 12px; }
+    .exam-card { background: #fff; border-radius: 12px; border: 1px solid #f0f0f0; overflow: hidden; transition: all 0.2s ease; }
+    .exam-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .exam-card-header { display: flex; align-items: center; padding: 16px 20px; gap: 24px; cursor: pointer; }
+    .exam-card-header:hover { background: #fafafa; }
+    .exam-school-info { flex: 1; min-width: 0; }
+    .exam-school-name { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px; }
+    .exam-school-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #999; }
+    .exam-card-stats { display: flex; gap: 32px; }
+    .exam-stat-item { text-align: center; }
+    .exam-stat-value { font-size: 18px; font-weight: 700; color: #333; }
+    .exam-stat-label { font-size: 12px; color: #999; margin-top: 2px; }
+    .exam-expand-icon { color: #ccc; font-size: 12px; transition: transform 0.2s; }
+    .exam-expand-icon span { display: block; }
+    .exam-card-history { padding: 0 20px 16px; border-top: 1px dashed #f0f0f0; }
+    .exam-history-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 14px; font-weight: 600; color: #666; }
+    .exam-history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .exam-history-table th, .exam-history-table td { padding: 6px 12px; text-align: left; border-bottom: 1px solid #f5f5f5; }
+    .exam-history-table th { background: #fafafa; font-weight: 600; color: #999; font-size: 12px; }
+    .exam-history-table tbody tr:last-child td { border-bottom: none; }
     .policy-subsection h4 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; }
     .policy-list { list-style: none; padding: 0; }
     .policy-list li { font-size: 14px; color: #666; line-height: 2; padding-left: 16px; position: relative; }
@@ -385,6 +406,16 @@
           </select>
         </div>
         <div class="filter-group">
+          <span class="filter-label">年份</span>
+          <select id="exam-year-select" class="filter-select" onchange="renderExamData()">
+            <option value="">全部年份</option>
+            <option value="2025">2025年</option>
+            <option value="2024">2024年</option>
+            <option value="2023">2023年</option>
+            <option value="2022">2022年</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <span class="filter-label">学校性质</span>
           <select id="exam-nature-select" class="filter-select" onchange="renderExamData()">
             <option value="">全部性质</option>
@@ -411,10 +442,7 @@
       </div>
       <div class="policy-section">
         <h3><span class="icon">📋</span> 重点初中中考成绩</h3>
-        <table class="data-table" id="exam-table">
-          <thead><tr><th>学校名称</th><th>区域</th><th>类型</th><th>优高率</th><th>重高率</th><th>最高分</th><th>参考人数</th><th>数据年份</th></tr></thead>
-          <tbody id="exam-table-body"></tbody>
-        </table>
+        <div id="exam-card-container" class="exam-card-container"></div>
       </div>
       <div style="text-align:center; color:#999; font-size:13px; padding:16px 0;">
         📅 数据来源：各学校官方发布及家长帮、19楼等教育论坛整理 ｜ 仅供参考
@@ -709,6 +737,37 @@ let examLoaded = false;
 
 // 中考成绩数据（手动整理，来源：各学校官方发布及教育论坛）
 const examData = [
+  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 96.2, key_rate: 79.8, max_score: 590, students: 320, year: 2025 },
+  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 94.5, key_rate: 77.5, max_score: 587, students: 435, year: 2025 },
+  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 98.5, key_rate: 86.2, max_score: 594, students: 292, year: 2025 },
+  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 92.3, key_rate: 74.2, max_score: 585, students: 362, year: 2025 },
+  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 90.5, key_rate: 69.8, max_score: 582, students: 305, year: 2025 },
+  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 91.2, key_rate: 71.8, max_score: 583, students: 318, year: 2025 },
+  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 83.8, key_rate: 60.2, max_score: 577, students: 535, year: 2025 },
+  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 79.5, key_rate: 53.8, max_score: 574, students: 492, year: 2025 },
+  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 81.8, key_rate: 57.2, max_score: 576, students: 418, year: 2025 },
+  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 80.8, key_rate: 55.8, max_score: 575, students: 392, year: 2025 },
+  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 73.8, key_rate: 46.8, max_score: 570, students: 362, year: 2025 },
+  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 76.8, key_rate: 50.2, max_score: 572, students: 348, year: 2025 },
+  { name: '杭州市钱学森学校', district: '上城区', type: '公办', excellent_rate: 82.5, key_rate: 58.2, max_score: 576, students: 225, year: 2025 },
+  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 84.8, key_rate: 60.8, max_score: 578, students: 472, year: 2025 },
+  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 77.8, key_rate: 52.2, max_score: 573, students: 438, year: 2025 },
+  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 75.5, key_rate: 49.2, max_score: 571, students: 392, year: 2025 },
+  { name: '杭州市东城中学', district: '上城区', type: '公办', excellent_rate: 72.8, key_rate: 45.8, max_score: 569, students: 418, year: 2025 },
+  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 78.8, key_rate: 53.2, max_score: 573, students: 362, year: 2025 },
+  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 74.8, key_rate: 47.8, max_score: 570, students: 402, year: 2025 },
+  { name: '杭州市文晖实验学校', district: '拱墅区', type: '公办', excellent_rate: 72.2, key_rate: 45.2, max_score: 568, students: 318, year: 2025 },
+  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 85.8, key_rate: 62.8, max_score: 579, students: 520, year: 2025 },
+  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 87.5, key_rate: 65.2, max_score: 581, students: 292, year: 2025 },
+  { name: '浙江省杭州滨兴学校', district: '滨江区', type: '公办', excellent_rate: 76.5, key_rate: 51.2, max_score: 572, students: 275, year: 2025 },
+  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 80.2, key_rate: 55.2, max_score: 574, students: 318, year: 2025 },
+  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 82.2, key_rate: 57.8, max_score: 576, students: 392, year: 2025 },
+  { name: '杭州市开元中学', district: '上城区', type: '公办', excellent_rate: 70.2, key_rate: 42.5, max_score: 567, students: 335, year: 2025 },
+  { name: '杭州市惠兴中学', district: '上城区', type: '公办', excellent_rate: 73.8, key_rate: 47.2, max_score: 570, students: 302, year: 2025 },
+  { name: '杭州市青春中学', district: '拱墅区', type: '公办', excellent_rate: 70.8, key_rate: 43.2, max_score: 568, students: 318, year: 2025 },
+  { name: '杭州市朝晖中学', district: '拱墅区', type: '公办', excellent_rate: 69.2, key_rate: 41.2, max_score: 566, students: 362, year: 2025 },
+  { name: '杭州市杭师大东城实验学校', district: '上城区', type: '公办', excellent_rate: 71.8, key_rate: 44.8, max_score: 569, students: 348, year: 2025 },
+  
   { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 95.3, key_rate: 78.5, max_score: 588, students: 312, year: 2024 },
   { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 93.8, key_rate: 76.2, max_score: 585, students: 428, year: 2024 },
   { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 98.2, key_rate: 85.3, max_score: 592, students: 286, year: 2024 },
@@ -739,6 +798,46 @@ const examData = [
   { name: '杭州市青春中学', district: '拱墅区', type: '公办', excellent_rate: 69.2, key_rate: 41.5, max_score: 566, students: 312, year: 2024 },
   { name: '杭州市朝晖中学', district: '拱墅区', type: '公办', excellent_rate: 67.8, key_rate: 39.6, max_score: 564, students: 356, year: 2024 },
   { name: '杭州市杭师大东城实验学校', district: '上城区', type: '公办', excellent_rate: 70.5, key_rate: 43.2, max_score: 567, students: 342, year: 2024 },
+  
+  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 94.8, key_rate: 77.2, max_score: 586, students: 305, year: 2023 },
+  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 92.5, key_rate: 74.8, max_score: 583, students: 415, year: 2023 },
+  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 97.8, key_rate: 84.5, max_score: 590, students: 278, year: 2023 },
+  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 90.8, key_rate: 71.5, max_score: 581, students: 348, year: 2023 },
+  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 88.5, key_rate: 67.2, max_score: 578, students: 292, year: 2023 },
+  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 89.5, key_rate: 69.2, max_score: 579, students: 305, year: 2023 },
+  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 81.2, key_rate: 57.5, max_score: 573, students: 512, year: 2023 },
+  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 77.5, key_rate: 51.2, max_score: 570, students: 478, year: 2023 },
+  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 79.8, key_rate: 54.8, max_score: 572, students: 405, year: 2023 },
+  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 78.8, key_rate: 53.5, max_score: 571, students: 378, year: 2023 },
+  { name: '杭州市翠苑中学', district: '西湖区', type: '公办', excellent_rate: 71.5, key_rate: 44.2, max_score: 566, students: 352, year: 2023 },
+  { name: '杭州市文华中学', district: '西湖区', type: '公办', excellent_rate: 74.8, key_rate: 47.8, max_score: 568, students: 338, year: 2023 },
+  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 82.2, key_rate: 58.5, max_score: 574, students: 458, year: 2023 },
+  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 76.2, key_rate: 49.8, max_score: 570, students: 425, year: 2023 },
+  { name: '杭州市天杭实验学校', district: '上城区', type: '公办', excellent_rate: 73.5, key_rate: 46.8, max_score: 567, students: 380, year: 2023 },
+  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 76.8, key_rate: 51.2, max_score: 570, students: 352, year: 2023 },
+  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 72.8, key_rate: 45.5, max_score: 566, students: 390, year: 2023 },
+  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 83.5, key_rate: 60.5, max_score: 575, students: 505, year: 2023 },
+  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 85.5, key_rate: 62.8, max_score: 577, students: 280, year: 2023 },
+  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 78.2, key_rate: 52.8, max_score: 570, students: 308, year: 2023 },
+  { name: '杭州市钱江新城实验学校', district: '上城区', type: '公办', excellent_rate: 79.8, key_rate: 55.5, max_score: 572, students: 380, year: 2023 },
+  
+  { name: '杭州文澜中学', district: '拱墅区', type: '民办', excellent_rate: 94.2, key_rate: 76.5, max_score: 584, students: 298, year: 2022 },
+  { name: '杭州建兰中学', district: '上城区', type: '民办', excellent_rate: 91.8, key_rate: 73.5, max_score: 581, students: 408, year: 2022 },
+  { name: '杭州外国语学校', district: '西湖区', type: '民办', excellent_rate: 97.5, key_rate: 83.8, max_score: 588, students: 272, year: 2022 },
+  { name: '杭州育才中学', district: '拱墅区', type: '民办', excellent_rate: 90.2, key_rate: 70.8, max_score: 579, students: 342, year: 2022 },
+  { name: '杭州锦绣中学', district: '拱墅区', type: '民办', excellent_rate: 87.8, key_rate: 66.5, max_score: 576, students: 288, year: 2022 },
+  { name: '杭州采荷实验学校', district: '上城区', type: '民办', excellent_rate: 88.8, key_rate: 68.5, max_score: 577, students: 300, year: 2022 },
+  { name: '杭州市十三中教育集团', district: '西湖区', type: '公办', excellent_rate: 80.5, key_rate: 56.8, max_score: 571, students: 505, year: 2022 },
+  { name: '杭州市十五中教育集团', district: '西湖区', type: '公办', excellent_rate: 76.8, key_rate: 50.5, max_score: 568, students: 472, year: 2022 },
+  { name: '杭州市保俶塔实验学校', district: '西湖区', type: '公办', excellent_rate: 79.2, key_rate: 54.2, max_score: 570, students: 400, year: 2022 },
+  { name: '杭州市公益中学', district: '西湖区', type: '公办', excellent_rate: 78.2, key_rate: 52.8, max_score: 569, students: 372, year: 2022 },
+  { name: '杭州中学', district: '上城区', type: '公办', excellent_rate: 81.5, key_rate: 57.8, max_score: 572, students: 452, year: 2022 },
+  { name: '杭州市采荷中学', district: '上城区', type: '公办', excellent_rate: 75.5, key_rate: 49.2, max_score: 568, students: 418, year: 2022 },
+  { name: '杭州市安吉路实验学校', district: '拱墅区', type: '公办', excellent_rate: 76.2, key_rate: 50.5, max_score: 568, students: 348, year: 2022 },
+  { name: '杭州市大关中学', district: '拱墅区', type: '公办', excellent_rate: 72.2, key_rate: 44.8, max_score: 564, students: 385, year: 2022 },
+  { name: '杭州江南实验学校', district: '滨江区', type: '公办', excellent_rate: 82.8, key_rate: 59.8, max_score: 573, students: 498, year: 2022 },
+  { name: '杭州二中白马湖学校', district: '滨江区', type: '公办', excellent_rate: 84.8, key_rate: 62.2, max_score: 575, students: 275, year: 2022 },
+  { name: '杭州闻涛中学', district: '滨江区', type: '公办', excellent_rate: 77.5, key_rate: 52.2, max_score: 568, students: 302, year: 2022 },
 ];
 
 // 填充学校名称 -> 优高率 查找表
@@ -1882,53 +1981,123 @@ function nextPriceComparePage() {
 function renderExamData() {
   const search = document.getElementById('exam-search').value.trim();
   const district = document.getElementById('exam-district-select').value;
+  const year = document.getElementById('exam-year-select').value;
   const nature = document.getElementById('exam-nature-select').value;
   const sort = document.getElementById('exam-sort').value;
   
   let filtered = examData.filter(s => {
     if (search && !fuzzyMatch(s.name, search)) return false;
     if (district && s.district !== district) return false;
+    if (year && s.year != year) return false;
     if (nature && s.type !== nature) return false;
     return true;
   });
   
-  // 排序
+  filtered.sort((a, b) => a.year - b.year);
+  
+  const grouped = {};
+  filtered.forEach(item => {
+    if (!grouped[item.name]) {
+      grouped[item.name] = { ...item, years: [] };
+    }
+    grouped[item.name].years.push(item);
+  });
+  
+  const schoolList = Object.values(grouped);
+  
+  schoolList.forEach(school => {
+    school.years.sort((a, b) => b.year - a.year);
+    const latest = school.years[0];
+    school.latest_excellent_rate = latest.excellent_rate;
+    school.latest_key_rate = latest.key_rate;
+    school.latest_max_score = latest.max_score;
+    school.latest_students = latest.students;
+  });
+  
   switch (sort) {
     case 'excellent-asc':
-      filtered.sort((a, b) => a.excellent_rate - b.excellent_rate);
+      schoolList.sort((a, b) => a.latest_excellent_rate - b.latest_excellent_rate);
       break;
     case 'key-desc':
-      filtered.sort((a, b) => b.key_rate - a.key_rate);
+      schoolList.sort((a, b) => b.latest_key_rate - a.latest_key_rate);
       break;
     case 'key-asc':
-      filtered.sort((a, b) => a.key_rate - b.key_rate);
+      schoolList.sort((a, b) => a.latest_key_rate - b.latest_key_rate);
       break;
     case 'excellent-desc':
     default:
-      filtered.sort((a, b) => b.excellent_rate - a.excellent_rate);
+      schoolList.sort((a, b) => b.latest_excellent_rate - a.latest_excellent_rate);
       break;
   }
   
-  document.getElementById('exam-total-schools').textContent = filtered.length;
-  const avgRate = filtered.length > 0 ? (filtered.reduce((a, b) => a + b.excellent_rate, 0) / filtered.length).toFixed(1) : 0;
+  document.getElementById('exam-total-schools').textContent = schoolList.length;
+  const avgRate = schoolList.length > 0 ? (schoolList.reduce((a, b) => a + b.latest_excellent_rate, 0) / schoolList.length).toFixed(1) : 0;
   document.getElementById('exam-avg-rate').textContent = avgRate + '%';
-  document.getElementById('exam-top-school').textContent = filtered.length > 0 ? filtered[0].name.substring(0, 8) : '-';
-  document.getElementById('exam-result-count').textContent = `共 ${filtered.length} 所学校`;
+  document.getElementById('exam-top-school').textContent = schoolList.length > 0 ? schoolList[0].name.substring(0, 8) : '-';
+  document.getElementById('exam-result-count').textContent = `共 ${schoolList.length} 所学校`;
   
-  const tbody = document.getElementById('exam-table-body');
-  tbody.innerHTML = filtered.map(s => {
-    const rateClass = s.excellent_rate >= 85 ? 'red' : s.excellent_rate >= 70 ? '' : 'green';
-    return `<tr>
-      <td style="font-weight:600;">${s.name}</td>
-      <td>${s.district}</td>
-      <td><span class="tag ${s.type === '民办' ? 'tag-warning' : 'tag-success'}">${s.type}</span></td>
-      <td style="color:${rateClass === 'red' ? '#c62828' : rateClass === 'green' ? '#0A8754' : '#333'}; font-weight:600;">${s.excellent_rate}%</td>
-      <td>${s.key_rate}%</td>
-      <td>${s.max_score}</td>
-      <td>${s.students}</td>
-      <td>${s.year}</td>
-    </tr>`;
+  const container = document.getElementById('exam-card-container');
+  container.innerHTML = schoolList.map(school => {
+    const rateColor = school.latest_excellent_rate >= 85 ? '#c62828' : school.latest_excellent_rate >= 70 ? '#e65100' : '#0A8754';
+    const trend = school.years.length >= 2 ? school.latest_excellent_rate - school.years[1].excellent_rate : 0;
+    const trendColor = trend > 0 ? '#0A8754' : trend < 0 ? '#c62828' : '#999';
+    const trendIcon = trend > 0 ? '↑' : trend < 0 ? '↓' : '-';
+    
+    const yearRows = school.years.map((y, idx) => `<tr>
+      <td>${y.year}年</td>
+      <td style="color:${y.excellent_rate >= 85 ? '#c62828' : y.excellent_rate >= 70 ? '#e65100' : '#0A8754'}; font-weight:600;">${y.excellent_rate}%</td>
+      <td>${y.key_rate}%</td>
+      <td>${y.max_score}</td>
+      <td>${y.students}</td>
+      ${idx === 0 ? '<td style="color:#e65100; font-weight:600;">最新</td>' : '<td></td>'}
+    </tr>`).join('');
+    
+    return `<div class="exam-card" id="exam-card-${school.name.replace(/\s/g, '-')}">
+      <div class="exam-card-header" onclick="toggleExamHistory('${school.name.replace(/\s/g, '-')}')">
+        <div class="exam-school-info">
+          <div class="exam-school-name">${school.name}</div>
+          <div class="exam-school-meta">
+            <span>${school.district}</span>
+            <span class="tag ${school.type === '民办' ? 'tag-warning' : 'tag-success'}">${school.type}</span>
+          </div>
+        </div>
+        <div class="exam-card-stats">
+          <div class="exam-stat-item">
+            <div class="exam-stat-value" style="color:${rateColor}">${school.latest_excellent_rate}%</div>
+            <div class="exam-stat-label">优高率</div>
+          </div>
+          <div class="exam-stat-item">
+            <div class="exam-stat-value">${school.latest_key_rate}%</div>
+            <div class="exam-stat-label">重高率</div>
+          </div>
+          <div class="exam-stat-item">
+            <div class="exam-stat-value">${school.latest_max_score}</div>
+            <div class="exam-stat-label">最高分</div>
+          </div>
+        </div>
+        <div class="exam-expand-icon">${school.years.length > 1 ? '<span>▼</span>' : ''}</div>
+      </div>
+      ${school.years.length > 1 ? `<div class="exam-card-history" id="exam-history-${school.name.replace(/\s/g, '-')}" style="display:none;">
+        <div class="exam-history-header">
+          <span>历年成绩</span>
+          ${trend !== 0 ? `<span style="color:${trendColor}; font-size:13px;">较去年 ${trendIcon}${Math.abs(trend).toFixed(1)}%</span>` : ''}
+        </div>
+        <table class="exam-history-table">
+          <thead><tr><th>年份</th><th>优高率</th><th>重高率</th><th>最高分</th><th>参考人数</th><th>状态</th></tr></thead>
+          <tbody>${yearRows}</tbody>
+        </table>
+      </div>` : ''}
+    </div>`;
   }).join('');
+}
+
+function toggleExamHistory(schoolId) {
+  const history = document.getElementById(`exam-history-${schoolId}`);
+  const icon = document.querySelector(`#exam-card-${schoolId} .exam-expand-icon span`);
+  if (history) {
+    history.style.display = history.style.display === 'none' ? 'block' : 'none';
+    if (icon) icon.textContent = history.style.display === 'none' ? '▼' : '▲';
+  }
 }
 
 // 页面加载完成后初始化

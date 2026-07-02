@@ -1,9 +1,34 @@
-"""生成小学导航页数据 JS 文件"""
+"""生成小学导航页数据 JS 文件
+
+优先从数据库读取数据，若数据库不可用则回退到JSON文件
+"""
 import json
 from pathlib import Path
 
-with open('/Users/yanxi/Downloads/0绿城/kiro-data/data-warehouse/杭州买房指南/data/raw/rxyj_all_schools.json') as f:
-    schools = json.load(f)
+try:
+    from db_manager import get_db
+    HAS_DB = True
+except ImportError:
+    HAS_DB = False
+
+BASE_DIR = Path(__file__).parent.parent.parent
+RAW_DATA_PATH = BASE_DIR / "data" / "raw" / "rxyj_all_schools.json"
+
+schools = []
+
+if HAS_DB:
+    try:
+        db = get_db()
+        schools_raw = db.get_all_schools()
+        schools = [dict(row) for row in schools_raw]
+        db.close()
+        print(f"[数据库] 读取学校数据: {len(schools)} 所")
+    except Exception as e:
+        print(f"[数据库] 读取失败: {e}, 回退到JSON文件")
+
+if not schools:
+    with open(RAW_DATA_PATH, "r", encoding="utf-8") as f:
+        schools = json.load(f)
 
 # 小学列表（有对口初中的）
 primary_schools = []

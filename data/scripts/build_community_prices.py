@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""基于学校-小区关系补充小区价格数据"""
+"""基于学校-小区关系补充小区价格数据
+
+优先从数据库读取数据，若数据库不可用则回退到JSON文件
+"""
 
 import json
 import re
@@ -8,6 +11,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent.parent
 RAW_DATA_PATH = BASE_DIR / "data" / "raw" / "rxyj_all_schools.json"
 OUTPUT_PATH = BASE_DIR / "data" / "processed" / "community_prices.json"
+
+try:
+    from db_manager import get_db
+    HAS_DB = True
+except ImportError:
+    HAS_DB = False
 
 # 已有价格数据（从首页提取的基准数据）
 EXISTING_PRICES = {
@@ -182,6 +191,23 @@ DISTRICT_PRICE_BASE = {
 }
 
 def load_communities():
+    if HAS_DB:
+        try:
+            db = get_db()
+            communities_raw = db.get_all_communities()
+            communities = {}
+            for row in communities_raw:
+                row_dict = dict(row)
+                communities[row_dict["name"]] = {
+                    "schools": json.loads(row_dict["schools_json"]) if row_dict["schools_json"] else [],
+                    "districts": json.loads(row_dict["districts_json"]) if row_dict["districts_json"] else [],
+                }
+            db.close()
+            print(f"[数据库] 读取小区数据: {len(communities)} 个")
+            return communities
+        except Exception as e:
+            print(f"[数据库] 读取失败: {e}, 回退到JSON文件")
+    
     with open(RAW_DATA_PATH, "r", encoding="utf-8") as f:
         schools = json.load(f)
     

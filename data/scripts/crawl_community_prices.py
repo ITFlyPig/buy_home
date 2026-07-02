@@ -15,6 +15,8 @@
 可选参数：
   --district 西湖区    只采集指定区域（如：西湖区、上城区、拱墅区、滨江区）
   --limit 500          限制采集数量（用于测试）
+
+采集完成后自动写入SQLite数据库和JSON文件
 """
 
 import json
@@ -23,12 +25,19 @@ import time
 import random
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 try:
     import requests
 except ImportError:
     print("请先安装 requests: pip install requests")
     exit(1)
+
+try:
+    from db_manager import get_db
+    HAS_DB = True
+except ImportError:
+    HAS_DB = False
 
 BASE_DIR = Path(__file__).parent.parent.parent
 RAW_DATA_PATH = BASE_DIR / "data" / "raw" / "rxyj_all_schools.json"
@@ -201,6 +210,36 @@ def main():
     output = existing + results
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
+
+    # 写入数据库
+    if HAS_DB:
+        print("\n[数据库] 写入小区价格数据...")
+        db = get_db()
+        db.init_db()
+        crawl_date = datetime.now().strftime("%Y-%m-%d")
+        
+        for item in output:
+            community_data = {
+                "name": item["name"],
+                "districts": item.get("districts", []),
+                "schools": item.get("schools", []),
+            }
+            db.upsert_community(community_data)
+            
+            price_data = {
+                "name": item["name"],
+                "avg_price": item.get("avg_price"),
+                "min_total": item.get("min_total"),
+                "max_total": item.get("max_total"),
+                "layout": item.get("layout", ""),
+                "year": item.get("year"),
+                "data_source": item.get("data_source", ""),
+                "crawl_date": crawl_date,
+            }
+            db.upsert_community_price(price_data)
+        
+        db.close()
+        print(f"    [完成] {len(output)} 条")
 
     # 统计
     elapsed = time.time() - start_time

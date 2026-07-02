@@ -1,17 +1,43 @@
 """
 将采集的 JSON 数据转为前端可用的 JS 文件（ES Module）
+
+优先从数据库读取数据，若数据库不可用则回退到JSON文件
 """
 import json
 from pathlib import Path
 
 base_dir = Path(__file__).parent.parent
 
-# 读取数据
-with open(base_dir / "raw" / "rxyj_all_schools.json", "r", encoding="utf-8") as f:
-    schools = json.load(f)
+try:
+    from db_manager import get_db
+    HAS_DB = True
+except ImportError:
+    HAS_DB = False
 
-with open(base_dir / "raw" / "rxyj_all_mappings.json", "r", encoding="utf-8") as f:
-    mappings = json.load(f)
+schools = []
+mappings = []
+
+if HAS_DB:
+    try:
+        db = get_db()
+        schools_raw = db.get_all_schools()
+        schools = [dict(row) for row in schools_raw]
+        
+        mappings_raw = db.get_school_community_mappings()
+        mappings = [dict(row) for row in mappings_raw]
+        db.close()
+        print(f"[数据库] 读取成功: {len(schools)} 所学校, {len(mappings)} 条映射")
+    except Exception as e:
+        print(f"[数据库] 读取失败: {e}, 回退到JSON文件")
+        HAS_DB = False
+
+if not HAS_DB or not schools:
+    with open(base_dir / "raw" / "rxyj_all_schools.json", "r", encoding="utf-8") as f:
+        schools = json.load(f)
+
+if not HAS_DB or not mappings:
+    with open(base_dir / "raw" / "rxyj_all_mappings.json", "r", encoding="utf-8") as f:
+        mappings = json.load(f)
 
 # 按学校分组对口小区
 school_communities = {}

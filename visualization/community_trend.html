@@ -128,6 +128,15 @@ function matchExamRate(schoolName) {
   return null;
 }
 
+function calculateDistrictAvgPrice(district) {
+  const districtCommunities = communityPrices.filter(c => 
+    c.districts && c.districts.includes(district)
+  );
+  if (districtCommunities.length === 0) return 0;
+  const total = districtCommunities.reduce((sum, c) => sum + (c.avg_price || 0), 0);
+  return Math.round(total / districtCommunities.length);
+}
+
 function getSchoolRate(schoolName) {
   let r = matchExamRate(schoolName);
   if (r == null) {
@@ -163,12 +172,15 @@ function init() {
   }
 
   const district = (community.districts || []).join('、') || '—';
+  const primaryDistrict = (community.districts || [])[0] || '';
+  const districtAvgPrice = primaryDistrict ? calculateDistrictAvgPrice(primaryDistrict) : 0;
   const rate = getCommunityMaxRate(community);
   const totalRange = community.min_total && community.max_total ? `${community.min_total}-${community.max_total} 万` : '—';
   const vsCity = community.avg_price - (priceStats.latest_price || 0);
   const vsCityPct = priceStats.latest_price ? (vsCity / priceStats.latest_price * 100) : 0;
+  const vsDistrict = community.avg_price - districtAvgPrice;
+  const vsDistrictPct = districtAvgPrice ? (vsDistrict / districtAvgPrice * 100) : 0;
 
-  // 对口学校列表（带优高率标注）
   const schoolTags = (community.schools || []).map(s => {
     const r = getSchoolRate(s);
     return r != null
@@ -191,9 +203,11 @@ function init() {
 
     <div class="price-stats">
       <div class="price-stat"><div class="label">小区均价</div><div class="value red">${community.avg_price.toLocaleString()}</div></div>
+      <div class="price-stat"><div class="label">${primaryDistrict}区域均价</div><div class="value" style="color:#1e88e5;">${districtAvgPrice.toLocaleString()}</div></div>
       <div class="price-stat"><div class="label">全市最新均价</div><div class="value">${(priceStats.latest_price || 0).toLocaleString()}</div></div>
+      <div class="price-stat"><div class="label">与区域差价</div><div class="value ${vsDistrict >= 0 ? 'red' : 'green'}">${vsDistrict >= 0 ? '+' : ''}${vsDistrict.toLocaleString()}</div></div>
       <div class="price-stat"><div class="label">与全市差价</div><div class="value ${vsCity >= 0 ? 'red' : 'green'}">${vsCity >= 0 ? '+' : ''}${vsCity.toLocaleString()}</div></div>
-      <div class="price-stat"><div class="label">偏离幅度</div><div class="value ${vsCityPct >= 0 ? 'red' : 'green'}">${vsCityPct >= 0 ? '+' : ''}${vsCityPct.toFixed(1)}%</div></div>
+      <div class="price-stat"><div class="label">区域偏离幅度</div><div class="value ${vsDistrictPct >= 0 ? 'red' : 'green'}">${vsDistrictPct >= 0 ? '+' : ''}${vsDistrictPct.toFixed(1)}%</div></div>
     </div>
 
     <div class="chart-section">
@@ -201,6 +215,7 @@ function init() {
       <div id="chart-wrap"><canvas id="price-chart"></canvas></div>
       <div class="chart-legend">
         <span style="color:#0A8754;">■</span> 全市二手房月度均价走势 &nbsp;&nbsp;
+        <span style="color:#1e88e5;">···</span> ${primaryDistrict}区域均价参考线（${districtAvgPrice.toLocaleString()} 元/㎡）&nbsp;&nbsp;
         <span style="color:#c62828;">—</span> ${community.name} 均价参考线（${community.avg_price.toLocaleString()} 元/㎡）
       </div>
     </div>
@@ -211,15 +226,12 @@ function init() {
     </div>
   `;
 
-  // 绘制折线图
   const series = priceData.map(p => ({ label: `${p.year}.${p.month}`, value: p.price }));
-  drawPriceChart('price-chart', series, community.avg_price, community.name, district);
+  drawPriceChart('price-chart', series, community.avg_price, districtAvgPrice, community.name, district);
 }
 
-// 纯 Canvas 折线图绘制
-function drawPriceChart(canvasId, series, refLine, communityName, district) {
+function drawPriceChart(canvasId, series, refLine, districtRefLine, communityName, district) {
   const canvas = document.getElementById(canvasId);
-  // 适配高分屏
   const wrap = canvas.parentElement;
   const dpr = window.devicePixelRatio || 1;
   const cssW = wrap.clientWidth - 24;
@@ -244,10 +256,13 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
     minV = Math.min(minV, refLine);
     maxV = Math.max(maxV, refLine);
   }
+  if (districtRefLine != null && districtRefLine > 0) {
+    minV = Math.min(minV, districtRefLine);
+    maxV = Math.max(maxV, districtRefLine);
+  }
   const span = maxV - minV || 1;
   minV -= span * 0.1; maxV += span * 0.1;
 
-  // 坐标轴
   ctx.strokeStyle = '#d0d0d0';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -256,7 +271,6 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
   ctx.lineTo(padL + plotW, padT + plotH);
   ctx.stroke();
 
-  // Y 轴刻度
   ctx.fillStyle = '#888';
   ctx.font = '12px -apple-system, "PingFang SC"';
   ctx.textAlign = 'right';
@@ -272,7 +286,6 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
     ctx.stroke();
   }
 
-  // X 轴刻度
   const n = series.length;
   const step = Math.max(1, Math.floor(n / 12));
   ctx.textAlign = 'center';
@@ -282,7 +295,23 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
     ctx.fillText(series[i].label, x, padT + plotH + 8);
   }
 
-  // 参考线
+  if (districtRefLine != null && districtRefLine > 0) {
+    const y = padT + plotH - ((districtRefLine - minV) / (maxV - minV)) * plotH;
+    ctx.strokeStyle = '#1e88e5';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + plotW, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#1e88e5';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.font = '12px -apple-system, "PingFang SC"';
+    ctx.fillText(districtRefLine.toLocaleString() + ' 元/㎡', padL + 6, y - 2);
+  }
+
   if (refLine != null) {
     const y = padT + plotH - ((refLine - minV) / (maxV - minV)) * plotH;
     ctx.strokeStyle = '#c62828';
@@ -300,7 +329,6 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
     ctx.fillText(refLine.toLocaleString() + ' 元/㎡', padL + 6, y - 2);
   }
 
-  // 折线
   ctx.strokeStyle = '#0A8754';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -311,7 +339,6 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
   });
   ctx.stroke();
 
-  // 数据点
   ctx.fillStyle = '#0A8754';
   series.forEach((s, i) => {
     const x = padL + (plotW * i / (n - 1 || 1));
@@ -321,7 +348,6 @@ function drawPriceChart(canvasId, series, refLine, communityName, district) {
     ctx.fill();
   });
 
-  // 标题
   ctx.fillStyle = '#333';
   ctx.font = '600 14px -apple-system, "PingFang SC"';
   ctx.textAlign = 'left';

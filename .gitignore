@@ -13,3 +13,9 @@ __pycache__/
 
 # Node
 node_modules/
+
+# Database
+data/*.db
+
+# Logs
+data/*.log

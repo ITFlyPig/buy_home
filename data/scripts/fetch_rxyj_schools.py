@@ -12,6 +12,8 @@ API 基础地址: https://rxyj.hzedu.gov.cn/hzjyAppServer/api/
     python fetch_rxyj_schools.py              # 全量采集（含详情）
     python fetch_rxyj_schools.py --skip-detail # 仅列表，不采集对口小区
     python fetch_rxyj_schools.py --district 西湖区
+
+采集完成后自动写入SQLite数据库和JSON文件
 """
 
 import json
@@ -21,6 +23,12 @@ import argparse
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
+
+try:
+    from db_manager import get_db
+    HAS_DB = True
+except ImportError:
+    HAS_DB = False
 
 # ============================================================
 # 配置
@@ -266,6 +274,23 @@ def main():
             print(f"完成 ({detail_count} 所有对口小区)")
 
         time.sleep(0.3)
+
+    # 保存到数据库
+    if HAS_DB:
+        print("\n  [数据库] 写入学校数据...")
+        db = get_db()
+        db.init_db()
+        
+        for school in all_schools:
+            db.upsert_school(school)
+        print(f"    学校: {len(all_schools)} 条")
+        
+        for mapping in all_mappings:
+            db.upsert_school_community_mapping(mapping)
+        print(f"    学区映射: {len(all_mappings)} 条")
+        
+        db.close()
+        print(f"    [完成]")
 
     # 保存
     print(f"\n{'='*50}")

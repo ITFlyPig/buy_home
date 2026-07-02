@@ -151,6 +151,72 @@ python3 data/scripts/build_frontend_data.py
 python3 data/scripts/build_community_prices.py
 ```
 
+### 数据库存储
+
+项目支持将数据存储到本地 SQLite 数据库，便于数据管理和历史追溯。
+
+**数据库位置**: `data/hangzhou_home.db`
+
+**数据库表结构**:
+
+| 表名 | 用途 | 记录数 |
+|------|------|--------|
+| `schools` | 学校信息（小学、初中、九年一贯制） | 452 所 |
+| `communities` | 小区信息 | 9712 个 |
+| `school_community_mapping` | 学区映射关系 | 17082 条 |
+| `community_prices` | 小区价格（支持历史记录） | 9712 条 |
+| `community_transactions` | 小区成交记录 | 预留 |
+| `crawl_tasks` | 采集任务状态追踪 | 预留 |
+
+**数据迁移（首次使用）**:
+
+```bash
+# 初始化数据库并迁移现有数据
+python3 data/scripts/migrate_to_db.py
+```
+
+### 定时更新（自动调度）
+
+项目支持每天定时自动更新数据，采用分层更新策略：
+
+| 数据类型 | 更新频率 | 时间 | 说明 |
+|----------|----------|------|------|
+| 学校学区数据 | 每周一 | 凌晨3:00 | rxyj API全量更新，约5分钟 |
+| 小区价格数据 | 每天 | 凌晨4:00 | 按区轮询，每天更新1-2个区，7天覆盖全部 |
+| 前端数据构建 | 每天 | 凌晨6:00 | 重建所有前端JS文件 |
+
+**区域轮询计划**:
+
+| 星期 | 更新区域 |
+|------|----------|
+| 周一 | 西湖区、上城区 |
+| 周二 | 拱墅区、滨江区 |
+| 周三 | 钱塘区、余杭区 |
+| 周四 | 临平区、临安区 |
+| 周五 | 桐庐县、淳安县 |
+| 周六 | 建德市 |
+| 周日 | 西湖区（重点区域） |
+
+**使用方法**:
+
+```bash
+# 启动定时调度器（后台运行）
+python3 data/scripts/scheduler.py
+
+# 立即执行一次所有任务
+python3 data/scripts/scheduler.py --run-now
+```
+
+**查看执行状态**:
+
+```bash
+# 实时查看日志
+tail -f data/scheduler.log
+
+# 查看最后执行结果
+tail -20 data/scheduler.log
+```
+
 ---
 
 ## 数据文件说明
@@ -212,8 +278,9 @@ python3 data/scripts/export_csv.py
 |------|----------|------|
 | 前端可视化 | Vue 3 + g-ui-web | 驾驶舱风格页面 |
 | 地图展示 | 高德地图 API | 区域划分、POI标注 |
-| 数据存储 | JSON/CSV | 文件型数据存储 |
+| 数据存储 | SQLite + JSON/CSV | 本地数据库存储，支持历史追溯 |
 | 数据采集 | Python + requests | 浙里办、贝壳等 |
+| 定时调度 | Python 内置模块 | 分层更新策略，无需外部依赖 |
 | 本地服务器 | Python http.server | 带缓存控制 |
 
 ---
