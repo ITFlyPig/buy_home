@@ -110,6 +110,43 @@ def update_price_data():
         logger.error("========== 小区价格数据更新部分失败 ==========")
 
 
+def update_transaction_data():
+    logger.info("========== 开始更新成交数据 ==========")
+    
+    today = datetime.now()
+    day_of_week = today.weekday()
+    
+    districts_to_update = []
+    if day_of_week == 0:
+        districts_to_update = ["西湖区", "上城区"]
+    elif day_of_week == 1:
+        districts_to_update = ["拱墅区", "滨江区"]
+    elif day_of_week == 2:
+        districts_to_update = ["钱塘区", "余杭区"]
+    elif day_of_week == 3:
+        districts_to_update = ["临平区", "临安区"]
+    elif day_of_week == 4:
+        districts_to_update = ["桐庐县", "淳安县"]
+    elif day_of_week == 5:
+        districts_to_update = ["建德市"]
+    else:
+        districts_to_update = ["西湖区"]
+    
+    logger.info(f"今日更新成交数据区域: {districts_to_update}")
+    
+    all_success = True
+    for district in districts_to_update:
+        success = run_script("crawl_transactions.py", "--district", district)
+        if not success:
+            all_success = False
+    
+    if all_success:
+        run_script("build_transaction_data.py")
+        logger.info("========== 成交数据更新完成 ==========")
+    else:
+        logger.error("========== 成交数据更新部分失败 ==========")
+
+
 def build_frontend_data():
     logger.info("========== 开始构建前端数据 ==========")
     success = run_script("build_frontend_data.py")
@@ -117,6 +154,7 @@ def build_frontend_data():
         run_script("build_community_prices.py")
         run_script("build_primary_data.py")
         run_script("build_price_data.py")
+        run_script("build_transaction_data.py")
         logger.info("========== 前端数据构建完成 ==========")
     else:
         logger.error("========== 前端数据构建失败 ==========")
@@ -151,6 +189,10 @@ def start_scheduler():
                 update_price_data()
                 time.sleep(60)
             
+            elif current_hour == 5 and current_minute == 0:
+                update_transaction_data()
+                time.sleep(60)
+            
             elif current_hour == 6 and current_minute == 0:
                 build_frontend_data()
                 time.sleep(60)
@@ -165,6 +207,7 @@ def run_all_tasks():
     logger.info("立即执行所有更新任务...")
     update_school_data()
     update_price_data()
+    update_transaction_data()
     build_frontend_data()
     logger.info("所有任务执行完成")
 

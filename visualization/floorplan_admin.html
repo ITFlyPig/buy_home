@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>户型图管理 - 杭州买房指南</title>
+  <script src="data/community_prices.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f6fa; color: #333; }
+    .header { background: linear-gradient(135deg, #1a237e, #283593); color: #fff; padding: 16px 24px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; }
+    .search-box:focus { border-color: #1a237e; }
+    .filter-select { padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
+    .stat-box { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 30px; }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 24px; font-weight: 700; color: #1a237e; }
+    .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+    .community-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px; }
+    .community-card { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #eee; transition: all 0.2s; }
+    .community-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #c5cae9; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .card-name { font-size: 15px; font-weight: 600; color: #1a237e; }
+    .card-district { font-size: 11px; color: #888; margin-top: 2px; }
+    .card-layout { font-size: 12px; color: #666; margin-bottom: 10px; }
+    .upload-area { border: 2px dashed #ddd; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-area:hover { border-color: #1a237e; background: #f5f6fa; }
+    .upload-area.has-img { border-style: solid; border-color: #4caf50; padding: 0; overflow: hidden; }
+    .upload-icon { font-size: 28px; color: #bbb; }
+    .upload-text { font-size: 12px; color: #888; margin-top: 4px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px; }
+    .preview-item { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 1; }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-item .badge { position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 4px; }
+    .preview-item .del { position: absolute; top: 2px; right: 2px; background: rgba(244,67,54,0.9); color: #fff; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: none; }
+    .status-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+    .status-ok { background: #e8f5e9; color: #2e7d32; }
+    .status-miss { background: #fff3e0; color: #e65100; }
+    .file-input { display: none; }
+    .btn-save { background: #1a237e; color: #fff; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-save:hover { background: #283593; }
+    .btn-export { background: #fff; color: #1a237e; border: 1px solid #1a237e; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-export:hover { background: #e8eaf6; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>户型图管理</h1>
+    <p>为每个小区上传真实户型图，支持按户型（1室/2室/3室/4室）分别上传</p>
+  </div>
+
+  <div class="container">
+    <div class="stat-box">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">小区总数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-uploaded" style="color:#2e7d32;">0</div>
+        <div class="stat-label">已上传</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-miss" style="color:#e65100;">0</div>
+        <div class="stat-label">待上传</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-imgs" style="color:#1565c0;">0</div>
+        <div class="stat-label">图片总数</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" class="search-box" id="search" placeholder="搜索小区名称..." oninput="renderList()">
+      <select class="filter-select" id="filter-district" onchange="renderList()">
+        <option value="">全部区域</option>
+      </select>
+      <select class="filter-select" id="filter-status" onchange="renderList()">
+        <option value="">全部状态</option>
+        <option value="ok">已上传</option>
+        <option value="miss">待上传</option>
+      </select>
+      <button class="btn-export" onclick="exportMap()">导出映射</button>
+    </div>
+
+    <div class="community-list" id="list"></div>
+  </div>
+
+  <input type="file" class="file-input" id="file-input" accept="image/*" multiple>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const FLOORPLAN_DIR = 'data/floorplans';
+    let floorplanMap = {};
+    let currentCommunity = null;
+    let currentRoomType = null;
+    let selectedCommunity = null;
+    let selectedRoomType = '';
+
+    // 尝试加载已有映射
+    function loadMap() {
+      const stored = localStorage.getItem('floorplanMap');
+      if (stored) {
+        try { floorplanMap = JSON.parse(stored); } catch(e) { floorplanMap = {}; }
+      }
+    }
+
+    function saveMap() {
+      localStorage.setItem('floorplanMap', JSON.stringify(floorplanMap));
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    function getSafeName(name) {
+      return name.replace(/[^\w\u4e00-\u9fff]/g, '_');
+    }
+
+    function getCommunityKey(name) {
+      return name;
+    }
+
+    function getImgPath(name, roomType, idx) {
+      return `${FLOORPLAN_DIR}/${getSafeName(name)}_${roomType}_${idx}.jpg`;
+    }
+
+    function getCommunityImages(name) {
+      const key = getCommunityKey(name);
+      return floorplanMap[key] || [];
+    }
+
+    function parseLayouts(layout) {
+      const layouts = (layout || '2室(60-75㎡) / 3室(80-100㎡)').split('/');
+      return layouts.map(l => {
+        const parts = l.trim().match(/(\d+)室.*?(\d+)-(\d+)㎡/);
+        return parts ? { rooms: parts[1], minArea: parts[2], maxArea: parts[3] } : { rooms: '2', minArea: '60', maxArea: '75' };
+      });
+    }
+
+    function initDistrictFilter() {
+      const districts = new Set();
+      communityPrices.forEach(c => (c.districts || []).forEach(d => districts.add(d)));
+      const sel = document.getElementById('filter-district');
+      [...districts].sort().forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderList() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const district = document.getElementById('filter-district').value;
+      const status = document.getElementById('filter-status').value;
+
+      let filtered = communityPrices.filter(c => {
+        if (search && !c.name.toLowerCase().includes(search)) return false;
+        if (district && !(c.districts || []).includes(district)) return false;
+        const imgs = getCommunityImages(c.name);
+        if (status === 'ok' && imgs.length === 0) return false;
+        if (status === 'miss' && imgs.length > 0) return false;
+        return true;
+      });
+
+      // 统计
+      let uploaded = 0, totalImgs = 0;
+      communityPrices.forEach(c => {
+        const imgs = getCommunityImages(c.name);
+        if (imgs.length > 0) uploaded++;
+        totalImgs += imgs.length;
+      });
+      document.getElementById('stat-total').textContent = communityPrices.length;
+      document.getElementById('stat-uploaded').textContent = uploaded;
+      document.getElementById('stat-miss').textContent = communityPrices.length - uploaded;
+      document.getElementById('stat-imgs').textContent = totalImgs;
+
+      const list = document.getElementById('list');
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty">没有符合条件的小区</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.slice(0, 100).map(c => {
+        const layouts = parseLayouts(c.layout);
+        const imgs = getCommunityImages(c.name);
+        const hasImg = imgs.length > 0;
+
+        const previewHtml = imgs.length > 0
+          ? `<div class="preview-grid">${imgs.map(img => {
+              // 粘贴的图片从localStorage读取base64
+              const base64 = img.base64 ? localStorage.getItem('fp:' + img.path) : null;
+              const src = base64 || img.path;
+              return `
+              <div class="preview-item">
+                <img src="${src}" alt="${img.name}" onerror="this.style.display='none'">
+                <span class="badge">${img.roomType}室</span>
+                <button class="del" onclick="delImg('${c.name}','${img.path}')">×</button>
+              </div>`;
+            }).join('')}</div>`
+          : '';
+
+        const is_selected = selectedCommunity === c.name;
+        return `<div class="community-card" style="${is_selected ? 'border-color:#1a237e;box-shadow:0 0 0 2px #1a237e;' : ''}" onclick="selectCommunity('${c.name.replace(/'/g, "\\'")}')">
+          <div class="card-header">
+            <div>
+              <div class="card-name">${c.name}</div>
+              <div class="card-district">${(c.districts || []).join('、')}</div>
+            </div>
+            <span class="status-tag ${hasImg ? 'status-ok' : 'status-miss'}">${hasImg ? `${imgs.length}张` : '待上传'}</span>
+          </div>
+          <div class="card-layout">${layouts.map(l => `${l.rooms}室(${l.minArea}-${l.maxArea}㎡)`).join(' · ')}</div>
+          ${is_selected ? `
+            <div style="background:#e8eaf6;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#1a237e;">
+              ✓ 已选中此小区，按 Ctrl+V 粘贴户型图
+              <span style="margin-left:8px;">户型：</span>
+              <select onchange="event.stopPropagation();selectedRoomType=this.value;" style="font-size:12px;padding:2px 6px;border:1px solid #ccc;border-radius:4px;" onclick="event.stopPropagation()">
+                <option value="">自动</option>
+                ${layouts.map(l => `<option value="${l.rooms}">${l.rooms}室</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+          <div class="upload-area" onclick="event.stopPropagation();triggerUpload('${c.name.replace(/'/g, "\\'")}')">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">点击上传 或 Ctrl+V 粘贴</div>
+          </div>
+          ${previewHtml}
+        </div>`;
+      }).join('') + (filtered.length > 100 ? `<div class="empty">还有 ${filtered.length - 100} 个小区，请搜索筛选</div>` : '');
+    }
+
+    function triggerUpload(communityName) {
+      currentCommunity = communityName;
+      document.getElementById('file-input').click();
+    }
+
+    function selectCommunity(name) {
+      selectedCommunity = selectedCommunity === name ? null : name;
+      selectedRoomType = '';
+      renderList();
+    }
+
+    // 监听全局粘贴事件
+    document.addEventListener('paste', async function(e) {
+      if (!selectedCommunity) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageItems = [];
+      for (let item of items) {
+        if (item.type.startsWith('image/')) {
+          imageItems.push(item.getAsFile());
+        }
+      }
+
+      if (imageItems.length === 0) return;
+      e.preventDefault();
+
+      for (let file of imageItems) {
+        await addImageToCommunity(selectedCommunity, file, selectedRoomType || null);
+      }
+
+      saveMap();
+      showToast(`已粘贴 ${imageItems.length} 张户型图到「${selectedCommunity}」`);
+      renderList();
+    });
+
+    // 公共上传逻辑：接收File对象和小区名
+    async function addImageToCommunity(name, file, roomType) {
+      const key = getCommunityKey(name);
+      if (!floorplanMap[key]) floorplanMap[key] = [];
+
+      if (!roomType) {
+        const m = file.name?.match(/(\d)室/);
+        if (m) roomType = m[1];
+        else {
+          const c = communityPrices.find(c => c.name === name);
+          if (c) {
+            const layouts = parseLayouts(c.layout);
+            roomType = layouts[0].rooms;
+          } else roomType = '2';
+        }
+      }
+
+      const idx = floorplanMap[key].filter(x => x.roomType === roomType).length + 1;
+      const path = getImgPath(name, roomType, idx);
+      const base64 = await fileToBase64(file);
+      localStorage.setItem(`fp:${path}`, base64);
+      floorplanMap[key].push({ path, name: file.name || '粘贴图片', roomType, base64: true });
+      return roomType;
+    }
+
+    document.getElementById('file-input').addEventListener('change', async function(e) {
+      const files = e.target.files;
+      if (!files.length || !currentCommunity) return;
+
+      for (let i = 0; i < files.length; i++) {
+        await addImageToCommunity(currentCommunity, files[i]);
+      }
+
+      saveMap();
+      showToast(`已上传 ${files.length} 张户型图`);
+      this.value = '';
+      renderList();
+    });
+
+    function fileToBase64(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function delImg(communityName, path) {
+      const key = getCommunityKey(communityName);
+      if (floorplanMap[key]) {
+        floorplanMap[key] = floorplanMap[key].filter(x => x.path !== path);
+        if (floorplanMap[key].length === 0) delete floorplanMap[key];
+        localStorage.removeItem(`fp:${path}`);
+        saveMap();
+        showToast('已删除');
+        renderList();
+      }
+    }
+
+    function exportMap() {
+      // 导出映射文件供 community_trend.html 使用
+      const data = JSON.stringify(floorplanMap, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'floorplan_map.json';
+      a.click();
+      showToast('已导出 floorplan_map.json');
+    }
+
+    // 初始化
+    loadMap();
+    initDistrictFilter();
+    renderList();
+  </script>
+</body>
+</html>

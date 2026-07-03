@@ -115,151 +115,222 @@
       return null;
     }
 
+    let floorplanMap = {};
+    // 异步加载户型图映射
+    fetch('data/floorplans/floorplan_map.json').then(r => r.json()).then(d => { floorplanMap = d || {}; }).catch(() => {});
+    // 同时加载localStorage中的映射（管理页面上传的）
+    try { const local = localStorage.getItem('floorplanMap'); if (local) { const lm = JSON.parse(local); Object.keys(lm).forEach(k => floorplanMap[k] = lm[k]); } } catch(e) {}
+
     function generateFloorPlans(community) {
       const layouts = (community.layout || '2室(60-75㎡) / 3室(80-100㎡)').split('/');
-      return layouts.map((layout, i) => {
+      const prompts = {
+        1: 'professional architectural floor plan blueprint of a 1 bedroom apartment, 40 square meters, Chinese residential building, top-down bird view, with room dimensions labeled in Chinese, living room, bedroom, kitchen, bathroom, balcony, hallway, north-south orientation indicator, realistic technical drawing, white background, thin black lines',
+        2: 'professional architectural floor plan blueprint of a 2 bedroom apartment, 60 square meters, Chinese residential building, top-down bird view, with room dimensions labeled in Chinese, living room, master bedroom, second bedroom, kitchen, bathroom, balcony, hallway connecting rooms, north-south orientation indicator, realistic technical drawing, white background, thin black lines',
+        3: 'professional architectural floor plan blueprint of a 3 bedroom apartment, 90 square meters, Chinese residential building, top-down bird view, with room dimensions labeled in Chinese, living room, dining room, master bedroom, two secondary bedrooms, kitchen, bathroom, balcony, hallway, north-south orientation indicator, realistic technical drawing, white background, thin black lines',
+        4: 'professional architectural floor plan blueprint of a 4 bedroom apartment, 130 square meters, Chinese residential building, top-down bird view, with room dimensions labeled in Chinese, living room, dining room, master bedroom with walk-in closet, three secondary bedrooms, kitchen, two bathrooms, two balconies, hallway, north-south orientation indicator, realistic technical drawing, white background, thin black lines',
+      };
+
+      // 查找该小区已上传的户型图
+      const uploaded = floorplanMap[community.name] || [];
+      // 按户型分组
+      const uploadedByRoom = {};
+      uploaded.forEach(img => {
+        const rt = img.roomType || '2';
+        if (!uploadedByRoom[rt]) uploadedByRoom[rt] = [];
+        uploadedByRoom[rt].push(img);
+      });
+
+      return layouts.map((layout) => {
         const parts = layout.trim().match(/(\d+)室.*?(\d+)-(\d+)㎡/);
         const rooms = parts ? parseInt(parts[1]) : 2;
         const minArea = parts ? parts[2] : '';
         const maxArea = parts ? parts[3] : '';
-        const svg = generateFloorPlanSVG(rooms);
+        const prompt = prompts[rooms] || prompts[2];
+        const aiImg = `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=square`;
+
+        // 优先使用已上传的真实户型图
+        const localImgs = uploadedByRoom[rooms] || [];
+        if (localImgs.length > 0) {
+          return localImgs.map(img => {
+            // base64存在localStorage中
+            const base64 = localStorage.getItem('fp:' + img.path);
+            const src = base64 || img.path;
+            return `<div class="floor-plan-card">
+              <img src="${src}" alt="${rooms}室户型图" style="width:100%;border-radius:8px;background:#f5f5f5;" onerror="this.onerror=null;this.src='${aiImg}';" />
+              <div class="plan-name">${rooms}室户型</div>
+              <div class="plan-desc">建筑面积</div>
+              <div class="plan-area">${minArea}-${maxArea}㎡</div>
+            </div>`;
+          }).join('');
+        }
+
+        // 回退：本地文件 or AI生成
+        const localImg = `data/floorplans/${rooms}室.jpg`;
         return `<div class="floor-plan-card">
-          ${svg}
+          <img src="${localImg}" alt="${rooms}室户型图" style="width:100%;border-radius:8px;background:#f5f5f5;" onerror="this.onerror=null;this.src='${aiImg}';" />
           <div class="plan-name">${rooms}室户型</div>
-          <div class="plan-desc">实用面积</div>
+          <div class="plan-desc">建筑面积</div>
           <div class="plan-area">${minArea}-${maxArea}㎡</div>
         </div>`;
       }).join('');
     }
 
     function generateFloorPlanSVG(rooms) {
-      const w = 200;
-      const h = 160;
-      const wall = '#333';
-      const bg = '#fff';
-      const living = '#fffbe6';
+      const w = 220;
+      const h = 180;
+      const wall = '#2c3e50';
+      const bg = '#fafafa';
+      const living = '#fff8e1';
       const room = '#e8f5e9';
       const kitchen = '#fce4ec';
       const bath = '#e3f2fd';
       const balcony = '#f1f8e9';
       const text = '#333';
-      
+      const sw = 2;
+      const entryIcon = `<text x="8" y="${h-8}" font-size="9" fill="#e65100">↑入户</text>`;
+
       if (rooms === 1) {
-        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-          <rect x="0" y="0" width="${w}" height="${h}" fill="${bg}"/>
-          <rect x="5" y="5" width="190" height="150" fill="none" stroke="${wall}" stroke-width="2"/>
-          <path d="M5,5 L5,40 L100,40 L100,5" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
-          <text x="52" y="20" font-size="8" fill="#666">阳台</text>
-          <text x="52" y="33" font-size="7" fill="#888">5㎡</text>
-          <rect x="5" y="40" width="100" height="70" fill="${living}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="55" y="65" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
-          <text x="55" y="82" font-size="8" fill="#666" text-anchor="middle">35㎡</text>
-          <rect x="105" y="5" width="90" height="80" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="150" y="35" font-size="10" fill="${text}" text-anchor="middle">卧室</text>
-          <text x="150" y="52" font-size="8" fill="#666" text-anchor="middle">20㎡</text>
-          <rect x="5" y="110" width="80" height="45" fill="${kitchen}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="45" y="130" font-size="9" fill="${text}" text-anchor="middle">厨房</text>
-          <text x="45" y="143" font-size="7" fill="#666" text-anchor="middle">6㎡</text>
-          <rect x="85" y="110" width="110" height="45" fill="${bath}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="140" y="130" font-size="9" fill="${text}" text-anchor="middle">卫生间</text>
-          <text x="140" y="143" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
-          <text x="10" y="158" font-size="10" fill="#888">北</text>
-          <text x="185" y="158" font-size="10" fill="#888">南</text>
-          <line x1="10" y1="155" x2="190" y2="155" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="background:${bg};border-radius:8px;">
+          <rect x="10" y="10" width="200" height="160" fill="none" stroke="${wall}" stroke-width="${sw}"/>
+          <path d="M10,10 L10,50 L55,50 L55,10" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+          <text x="32" y="28" font-size="8" fill="#666" text-anchor="middle">阳台</text>
+          <text x="32" y="40" font-size="7" fill="#999" text-anchor="middle">5㎡</text>
+          <rect x="10" y="50" width="85" height="80" fill="${living}" stroke="${wall}" stroke-width="1"/>
+          <text x="52" y="85" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
+          <text x="52" y="100" font-size="8" fill="#666" text-anchor="middle">28㎡</text>
+          <rect x="10" y="130" width="40" height="40" fill="${kitchen}" stroke="${wall}" stroke-width="1"/>
+          <text x="30" y="148" font-size="8" fill="${text}" text-anchor="middle">厨房</text>
+          <text x="30" y="160" font-size="7" fill="#666" text-anchor="middle">6㎡</text>
+          <rect x="50" y="130" width="45" height="40" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+          <text x="72" y="148" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+          <text x="72" y="160" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
+          <rect x="95" y="10" width="115" height="75" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="152" y="42" font-size="10" fill="${text}" text-anchor="middle">卧室</text>
+          <text x="152" y="57" font-size="8" fill="#666" text-anchor="middle">20㎡</text>
+          <rect x="95" y="85" width="115" height="85" fill="${bg}" stroke="${wall}" stroke-width="1"/>
+          <text x="152" y="120" font-size="8" fill="#999" text-anchor="middle">过道/餐厅</text>
+          ${entryIcon}
+          <text x="110" y="178" font-size="8" fill="#999">北</text>
+          <text x="195" y="178" font-size="8" fill="#999">南</text>
         </svg>`;
       }
       
       if (rooms === 2) {
-        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-          <rect x="0" y="0" width="${w}" height="${h}" fill="${bg}"/>
-          <rect x="5" y="5" width="190" height="150" fill="none" stroke="${wall}" stroke-width="2"/>
-          <path d="M5,5 L5,50 L70,50 L70,5" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
-          <text x="37" y="20" font-size="8" fill="#666">阳台</text>
-          <text x="37" y="33" font-size="7" fill="#888">6㎡</text>
-          <rect x="5" y="50" width="70" height="80" fill="${living}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="40" y="80" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
-          <text x="40" y="97" font-size="8" fill="#666" text-anchor="middle">30㎡</text>
-          <rect x="75" y="5" width="60" height="70" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="105" y="32" font-size="10" fill="${text}" text-anchor="middle">主卧</text>
-          <text x="105" y="49" font-size="8" fill="#666" text-anchor="middle">18㎡</text>
-          <rect x="75" y="75" width="60" height="80" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="105" y="105" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-          <text x="105" y="122" font-size="8" fill="#666" text-anchor="middle">14㎡</text>
-          <rect x="135" y="5" width="60" height="55" fill="${bath}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="165" y="27" font-size="9" fill="${text}" text-anchor="middle">卫生间</text>
-          <text x="165" y="42" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
-          <rect x="135" y="60" width="60" height="95" fill="${kitchen}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="165" y="85" font-size="9" fill="${text}" text-anchor="middle">厨房</text>
-          <text x="165" y="100" font-size="7" fill="#666" text-anchor="middle">7㎡</text>
-          <text x="10" y="158" font-size="10" fill="#888">北</text>
-          <text x="185" y="158" font-size="10" fill="#888">南</text>
-          <line x1="10" y1="155" x2="190" y2="155" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="background:${bg};border-radius:8px;">
+          <rect x="10" y="10" width="200" height="160" fill="none" stroke="${wall}" stroke-width="${sw}"/>
+          <path d="M10,10 L10,55 L60,55 L60,10" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+          <text x="35" y="30" font-size="8" fill="#666" text-anchor="middle">阳台</text>
+          <text x="35" y="42" font-size="7" fill="#999" text-anchor="middle">6㎡</text>
+          <rect x="10" y="55" width="60" height="65" fill="${living}" stroke="${wall}" stroke-width="1"/>
+          <text x="40" y="82" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
+          <text x="40" y="97" font-size="8" fill="#666" text-anchor="middle">25㎡</text>
+          <rect x="10" y="120" width="60" height="50" fill="${kitchen}" stroke="${wall}" stroke-width="1"/>
+          <text x="40" y="140" font-size="9" fill="${text}" text-anchor="middle">厨房</text>
+          <text x="40" y="153" font-size="7" fill="#666" text-anchor="middle">7㎡</text>
+          <rect x="70" y="120" width="35" height="50" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+          <text x="87" y="140" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+          <text x="87" y="153" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
+          <rect x="105" y="55" width="35" height="115" fill="${bg}" stroke="${wall}" stroke-width="1"/>
+          <text x="122" y="110" font-size="7" fill="#aaa" text-anchor="middle">过道</text>
+          <rect x="70" y="10" width="70" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="105" y="30" font-size="9" fill="${text}" text-anchor="middle">主卧</text>
+          <text x="105" y="43" font-size="8" fill="#666" text-anchor="middle">18㎡</text>
+          <rect x="140" y="10" width="70" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="175" y="30" font-size="9" fill="${text}" text-anchor="middle">次卧</text>
+          <text x="175" y="43" font-size="8" fill="#666" text-anchor="middle">14㎡</text>
+          <rect x="140" y="55" width="70" height="55" fill="${living}" stroke="${wall}" stroke-width="1"/>
+          <text x="175" y="78" font-size="9" fill="${text}" text-anchor="middle">餐厅</text>
+          <text x="175" y="93" font-size="7" fill="#666" text-anchor="middle">10㎡</text>
+          <rect x="140" y="110" width="70" height="60" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+          <text x="175" y="135" font-size="8" fill="#666" text-anchor="middle">阳台</text>
+          <text x="175" y="148" font-size="7" fill="#999" text-anchor="middle">4㎡</text>
+          ${entryIcon}
+          <text x="110" y="178" font-size="8" fill="#999">北</text>
+          <text x="195" y="178" font-size="8" fill="#999">南</text>
         </svg>`;
       }
       
       if (rooms === 3) {
-        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-          <rect x="0" y="0" width="${w}" height="${h}" fill="${bg}"/>
-          <rect x="5" y="5" width="190" height="150" fill="none" stroke="${wall}" stroke-width="2"/>
-          <path d="M5,5 L5,60 L80,60 L80,5" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
-          <text x="42" y="20" font-size="8" fill="#666">阳台</text>
-          <text x="42" y="33" font-size="7" fill="#888">7㎡</text>
-          <rect x="5" y="60" width="80" height="95" fill="${living}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="45" y="90" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
-          <text x="45" y="107" font-size="8" fill="#666" text-anchor="middle">35㎡</text>
-          <text x="45" y="125" font-size="8" fill="#666" text-anchor="middle">餐厅</text>
-          <rect x="85" y="5" width="55" height="50" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="112" y="27" font-size="10" fill="${text}" text-anchor="middle">主卧</text>
-          <text x="112" y="42" font-size="8" fill="#666" text-anchor="middle">20㎡</text>
-          <rect x="85" y="55" width="55" height="50" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="112" y="80" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-          <text x="112" y="95" font-size="8" fill="#666" text-anchor="middle">15㎡</text>
-          <rect x="85" y="105" width="55" height="50" fill="${bath}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="112" y="127" font-size="9" fill="${text}" text-anchor="middle">卫生间</text>
-          <text x="112" y="142" font-size="7" fill="#666" text-anchor="middle">6㎡</text>
-          <rect x="140" y="5" width="55" height="65" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="167" y="32" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-          <text x="167" y="49" font-size="8" fill="#666" text-anchor="middle">13㎡</text>
-          <rect x="140" y="70" width="55" height="85" fill="${kitchen}" stroke="${wall}" stroke-width="1.5"/>
-          <text x="167" y="95" font-size="9" fill="${text}" text-anchor="middle">厨房</text>
-          <text x="167" y="110" font-size="7" fill="#666" text-anchor="middle">8㎡</text>
-          <text x="10" y="158" font-size="10" fill="#888">北</text>
-          <text x="185" y="158" font-size="10" fill="#888">南</text>
-          <line x1="10" y1="155" x2="190" y2="155" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="background:${bg};border-radius:8px;">
+          <rect x="10" y="10" width="200" height="160" fill="none" stroke="${wall}" stroke-width="${sw}"/>
+          <path d="M10,10 L10,50 L70,50 L70,10" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+          <text x="40" y="28" font-size="8" fill="#666" text-anchor="middle">阳台</text>
+          <text x="40" y="40" font-size="7" fill="#999" text-anchor="middle">7㎡</text>
+          <rect x="10" y="50" width="70" height="60" fill="${living}" stroke="${wall}" stroke-width="1"/>
+          <text x="45" y="75" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
+          <text x="45" y="90" font-size="8" fill="#666" text-anchor="middle">22㎡</text>
+          <rect x="10" y="110" width="70" height="60" fill="${living}" stroke="${wall}" stroke-width="1"/>
+          <text x="45" y="135" font-size="9" fill="${text}" text-anchor="middle">餐厅</text>
+          <text x="45" y="150" font-size="7" fill="#666" text-anchor="middle">8㎡</text>
+          <rect x="80" y="10" width="45" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="102" y="30" font-size="9" fill="${text}" text-anchor="middle">主卧</text>
+          <text x="102" y="43" font-size="7" fill="#666" text-anchor="middle">16㎡</text>
+          <rect x="80" y="55" width="45" height="50" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+          <text x="102" y="75" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+          <text x="102" y="88" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
+          <rect x="80" y="105" width="45" height="65" fill="${kitchen}" stroke="${wall}" stroke-width="1"/>
+          <text x="102" y="130" font-size="8" fill="${text}" text-anchor="middle">厨房</text>
+          <text x="102" y="143" font-size="7" fill="#666" text-anchor="middle">7㎡</text>
+          <rect x="125" y="55" width="40" height="115" fill="${bg}" stroke="${wall}" stroke-width="1"/>
+          <text x="145" y="110" font-size="7" fill="#aaa" text-anchor="middle">过道</text>
+          <rect x="125" y="10" width="45" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="147" y="30" font-size="9" fill="${text}" text-anchor="middle">次卧</text>
+          <text x="147" y="43" font-size="7" fill="#666" text-anchor="middle">12㎡</text>
+          <rect x="170" y="10" width="40" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+          <text x="190" y="30" font-size="9" fill="${text}" text-anchor="middle">次卧</text>
+          <text x="190" y="43" font-size="7" fill="#666" text-anchor="middle">11㎡</text>
+          <rect x="165" y="55" width="45" height="55" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+          <text x="187" y="78" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+          <text x="187" y="91" font-size="7" fill="#666" text-anchor="middle">4㎡</text>
+          <rect x="165" y="110" width="45" height="60" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+          <text x="187" y="135" font-size="8" fill="#666" text-anchor="middle">阳台</text>
+          <text x="187" y="148" font-size="7" fill="#999" text-anchor="middle">5㎡</text>
+          ${entryIcon}
+          <text x="110" y="178" font-size="8" fill="#999">北</text>
+          <text x="195" y="178" font-size="8" fill="#999">南</text>
         </svg>`;
       }
       
-      return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-        <rect x="0" y="0" width="${w}" height="${h}" fill="${bg}"/>
-        <rect x="5" y="5" width="190" height="150" fill="none" stroke="${wall}" stroke-width="2"/>
-        <path d="M5,5 L5,60 L90,60 L90,5" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
-        <text x="47" y="20" font-size="8" fill="#666">阳台</text>
-        <text x="47" y="33" font-size="7" fill="#888">8㎡</text>
-        <rect x="5" y="60" width="90" height="95" fill="${living}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="50" y="90" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
-        <text x="50" y="107" font-size="8" fill="#666" text-anchor="middle">40㎡</text>
-        <text x="50" y="125" font-size="8" fill="#666" text-anchor="middle">餐厅</text>
-        <rect x="95" y="5" width="45" height="45" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="117" y="27" font-size="10" fill="${text}" text-anchor="middle">主卧</text>
-        <text x="117" y="42" font-size="8" fill="#666" text-anchor="middle">22㎡</text>
-        <rect x="95" y="50" width="45" height="45" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="117" y="72" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-        <text x="117" y="87" font-size="8" fill="#666" text-anchor="middle">14㎡</text>
-        <rect x="95" y="95" width="45" height="60" fill="${bath}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="117" y="117" font-size="9" fill="${text}" text-anchor="middle">卫生间</text>
-        <text x="117" y="132" font-size="7" fill="${text}" text-anchor="middle">7㎡</text>
-        <rect x="140" y="5" width="55" height="45" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="167" y="27" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-        <text x="167" y="42" font-size="8" fill="#666" text-anchor="middle">13㎡</text>
-        <rect x="140" y="50" width="55" height="45" fill="${room}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="167" y="72" font-size="10" fill="${text}" text-anchor="middle">次卧</text>
-        <text x="167" y="87" font-size="8" fill="${text}" text-anchor="middle">12㎡</text>
-        <rect x="140" y="95" width="55" height="60" fill="${kitchen}" stroke="${wall}" stroke-width="1.5"/>
-        <text x="167" y="117" font-size="9" fill="${text}" text-anchor="middle">厨房</text>
-        <text x="167" y="132" font-size="7" fill="${text}" text-anchor="middle">9㎡</text>
-        <text x="10" y="158" font-size="10" fill="#888">北</text>
-        <text x="185" y="158" font-size="10" fill="#888">南</text>
-        <line x1="10" y1="155" x2="190" y2="155" stroke="#ccc" stroke-width="1" stroke-dasharray="2,2"/>
+      // 4室：大户型，双卫，主卧带衣帽间
+      return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="background:${bg};border-radius:8px;">
+        <rect x="10" y="10" width="200" height="160" fill="none" stroke="${wall}" stroke-width="${sw}"/>
+        <path d="M10,10 L10,45 L75,45 L75,10" fill="${balcony}" stroke="${wall}" stroke-width="1"/>
+        <text x="42" y="25" font-size="8" fill="#666" text-anchor="middle">大阳台</text>
+        <text x="42" y="37" font-size="7" fill="#999" text-anchor="middle">8㎡</text>
+        <rect x="10" y="45" width="75" height="55" fill="${living}" stroke="${wall}" stroke-width="1"/>
+        <text x="47" y="70" font-size="10" fill="${text}" text-anchor="middle">客厅</text>
+        <text x="47" y="85" font-size="8" fill="#666" text-anchor="middle">28㎡</text>
+        <rect x="10" y="100" width="75" height="70" fill="${living}" stroke="${wall}" stroke-width="1"/>
+        <text x="47" y="125" font-size="9" fill="${text}" text-anchor="middle">餐厅</text>
+        <text x="47" y="140" font-size="7" fill="#666" text-anchor="middle">12㎡</text>
+        <rect x="85" y="45" width="40" height="45" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+        <text x="105" y="63" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+        <text x="105" y="76" font-size="7" fill="#666" text-anchor="middle">5㎡</text>
+        <rect x="85" y="90" width="40" height="40" fill="${kitchen}" stroke="${wall}" stroke-width="1"/>
+        <text x="105" y="107" font-size="8" fill="${text}" text-anchor="middle">厨房</text>
+        <text x="105" y="120" font-size="7" fill="#666" text-anchor="middle">8㎡</text>
+        <rect x="85" y="130" width="40" height="40" fill="${bath}" stroke="${wall}" stroke-width="1"/>
+        <text x="105" y="148" font-size="7" fill="${text}" text-anchor="middle">卫生间</text>
+        <text x="105" y="160" font-size="7" fill="#666" text-anchor="middle">4㎡</text>
+        <rect x="125" y="45" width="35" height="125" fill="${bg}" stroke="${wall}" stroke-width="1"/>
+        <text x="142" y="105" font-size="7" fill="#aaa" text-anchor="middle">过道</text>
+        <rect x="85" y="10" width="50" height="35" fill="${room}" stroke="${wall}" stroke-width="1"/>
+        <text x="110" y="27" font-size="8" fill="${text}" text-anchor="middle">主卧</text>
+        <text x="110" y="38" font-size="7" fill="#666" text-anchor="middle">18㎡</text>
+        <rect x="135" y="10" width="25" height="35" fill="${room}" stroke="${wall}" stroke-width="1" opacity="0.6"/>
+        <text x="147" y="27" font-size="6" fill="#666" text-anchor="middle">衣帽间</text>
+        <rect x="160" y="10" width="50" height="45" fill="${room}" stroke="${wall}" stroke-width="1"/>
+        <text x="185" y="30" font-size="8" fill="${text}" text-anchor="middle">次卧</text>
+        <text x="185" y="43" font-size="7" fill="#666" text-anchor="middle">14㎡</text>
+        <rect x="160" y="55" width="50" height="50" fill="${room}" stroke="${wall}" stroke-width="1"/>
+        <text x="185" y="77" font-size="8" fill="${text}" text-anchor="middle">次卧</text>
+        <text x="185" y="90" font-size="7" fill="#666" text-anchor="middle">12㎡</text>
+        <rect x="160" y="105" width="50" height="65" fill="${room}" stroke="${wall}" stroke-width="1"/>
+        <text x="185" y="130" font-size="8" fill="${text}" text-anchor="middle">书房</text>
+        <text x="185" y="143" font-size="7" fill="#666" text-anchor="middle">10㎡</text>
+        ${entryIcon}
+        <text x="110" y="178" font-size="8" fill="#999">北</text>
+        <text x="195" y="178" font-size="8" fill="#999">南</text>
       </svg>`;
     }
 
@@ -394,7 +465,7 @@
             </div>
             <div class="basic-item">
               <div class="basic-label">总价</div>
-              <div class="basic-value">${community.total_price}</div>
+              <div class="basic-value">${community.min_total && community.max_total ? community.min_total + '-' + community.max_total + '万' : '—'}</div>
             </div>
             <div class="basic-item">
               <div class="basic-label">建成年份</div>
@@ -486,7 +557,7 @@
       
       const canvas = ctx;
       const padL = 60, padR = 20, padT = 30, padB = 40;
-      const w = canvas.width = canvas.offsetWidth;
+      const w = canvas.width = (canvas.parentElement.offsetWidth || 600);
       const h = canvas.height = 280;
       const plotW = w - padL - padR;
       const plotH = h - padT - padB;

@@ -4,6 +4,7 @@
 优先从数据库读取数据，若数据库不可用则回退到JSON文件
 """
 import json
+import csv
 from pathlib import Path
 
 base_dir = Path(__file__).parent.parent
@@ -56,6 +57,25 @@ for s in schools:
     s["communities_hj"] = comm["户籍生"]
     s["communities_xhzr"] = comm["新杭州人"]
     s["community_count"] = len(comm["户籍生"]) + len(comm["新杭州人"])
+
+# 从 school_detail.csv 补充 direct_middle_school（列表接口不返回该字段）
+detail_csv = base_dir / "processed" / "school_detail.csv"
+if detail_csv.exists():
+    dms_map = {}
+    with open(detail_csv, "r", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = row.get("campus_code", "").strip()
+            dms = row.get("direct_middle_school", "").strip()
+            if code and dms:
+                dms_map[code] = dms
+    filled = 0
+    for s in schools:
+        if not s.get("direct_middle_school", "").strip():
+            code = s.get("campus_code", "")
+            if code in dms_map:
+                s["direct_middle_school"] = dms_map[code]
+                filled += 1
+    print(f"[补充] 从 school_detail.csv 填充 direct_middle_school: {filled} 所学校")
 
 # 从 direct_middle_school 字段提取缺失的初中学校
 existing_school_names = set(s["school_name"] for s in schools)
