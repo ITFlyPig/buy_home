@@ -162,6 +162,48 @@ def export_school_detail():
     write_csv(os.path.join(PROCESSED_DIR, "school_detail.csv"), rows, fieldnames)
 
 
+def export_transactions():
+    """从数据库导出小区成交记录"""
+    print("[5] 导出小区成交记录 community_transactions")
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from db_manager import get_db
+    except ImportError:
+        print("  跳过（db_manager 不可用）")
+        return
+    db = get_db()
+    rows_raw = db.query("SELECT * FROM community_transactions ORDER BY trade_date DESC")
+    rows = [dict(r) for r in rows_raw]
+    db.close()
+    fieldnames = [
+        "id", "community_name", "trade_date", "area", "price",
+        "total_price", "building", "floor", "orientation", "crawl_date",
+    ]
+    write_csv(os.path.join(PROCESSED_DIR, "community_transactions.csv"), rows, fieldnames)
+
+
+def export_prices():
+    """从数据库导出小区价格记录"""
+    print("[6] 导出小区价格记录 community_prices")
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from db_manager import get_db
+    except ImportError:
+        print("  跳过（db_manager 不可用）")
+        return
+    db = get_db()
+    rows_raw = db.query("SELECT * FROM community_prices ORDER BY community_name, crawl_date DESC")
+    rows = [dict(r) for r in rows_raw]
+    db.close()
+    fieldnames = [
+        "id", "community_name", "avg_price", "min_total", "max_total",
+        "layout", "year", "data_source", "crawl_date",
+    ]
+    write_csv(os.path.join(PROCESSED_DIR, "community_prices.csv"), rows, fieldnames)
+
+
 def main():
     print("=" * 60)
     print("将学校、学区JSON数据导出为CSV")
@@ -170,6 +212,8 @@ def main():
     export_mappings()
     export_school_district()
     export_school_detail()
+    export_transactions()
+    export_prices()
     print("=" * 60)
     print("全部完成！CSV文件保存在 data/processed/ 目录下")
 
